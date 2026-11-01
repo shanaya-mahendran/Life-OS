@@ -272,9 +272,9 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
 
   try {
     for (let step = 0; step < 6; step += 1) {
-      const completion = await executeWithDeepSeekPool((client) =>
+      const completion = await executeWithDeepSeekPool((client, _idx, model) =>
         client.chat.completions.create({
-          model: AGENT_MODEL,
+          model,
           messages: messages as never,
           tools: toolSpecs() as never,
           tool_choice: "auto",

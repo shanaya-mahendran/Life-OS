@@ -8,21 +8,27 @@
 
 import OpenAI from "openai";
 
+export const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
+export const GROQ_DEFAULT_MODEL = "llama-3.3-70b-versatile";
+
 export const DEEPSEEK_BASE_URL = process.env.DEEPSEEK_BASE_URL ?? "https://api.deepseek.com";
 export const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL ?? "deepseek-chat";
 
 interface KeyEntry {
   key: string;
   client: OpenAI;
+  model: string;
   cooldownUntil: number;
 }
 
 let keyPool: KeyEntry[] | null = null;
 let currentKeyIndex = 0;
 
-/** Extract all configured DeepSeek keys from environment variables. */
+/** Extract all configured Groq & DeepSeek keys from environment variables. */
 export function getConfiguredKeys(): string[] {
   const rawKeys: (string | undefined)[] = [
+    process.env.GROQ_API_KEY,
+    process.env.GROQ_API_KEY_2,
     process.env.DEEPSEEK_API_KEY,
     process.env.DEEPSEEK_API_KEY_2,
     process.env.DEEPSEEK_API_KEY_3,
@@ -44,16 +50,23 @@ function initPool(): KeyEntry[] {
   const keys = getConfiguredKeys();
   if (!keys.length) return [];
 
-  return keys.map((key) => ({
-    key,
-    client: new OpenAI({
-      apiKey: key,
-      baseURL: DEEPSEEK_BASE_URL,
-      timeout: 45_000,
-      maxRetries: 1,
-    }),
-    cooldownUntil: 0,
-  }));
+  return keys.map((key) => {
+    const isGroq = key.startsWith("gsk_") || Boolean(process.env.GROQ_API_KEY && key === process.env.GROQ_API_KEY);
+    const baseURL = isGroq ? GROQ_BASE_URL : DEEPSEEK_BASE_URL;
+    const model = isGroq ? GROQ_DEFAULT_MODEL : DEEPSEEK_MODEL;
+
+    return {
+      key,
+      model,
+      client: new OpenAI({
+        apiKey: key,
+        baseURL,
+        timeout: 45_000,
+        maxRetries: 1,
+      }),
+      cooldownUntil: 0,
+    };
+  });
 }
 
 function getPool(): KeyEntry[] {
@@ -103,11 +116,11 @@ export function getDeepSeek(): OpenAI {
  * client 2, then client 3 before falling back to the rules engine.
  */
 export async function executeWithDeepSeekPool<T>(
-  action: (client: OpenAI, keyIndex: number) => Promise<T>,
+  action: (client: OpenAI, keyIndex: number, model: string) => Promise<T>,
 ): Promise<T> {
   const pool = getPool();
   if (!pool.length) {
-    throw new Error("No DEEPSEEK_API_KEY configured.");
+    throw new Error("No AI API key configured.");
   }
 
   const now = Date.now();
@@ -122,7 +135,7 @@ export async function executeWithDeepSeekPool<T>(
     const entry = pool[idx];
     try {
       currentKeyIndex = (idx + 1) % pool.length;
-      return await action(entry.client, idx);
+      return await action(entry.client, idx, entry.model);
     } catch (err: unknown) {
       lastError = err;
       const errorMessage = String(err);
