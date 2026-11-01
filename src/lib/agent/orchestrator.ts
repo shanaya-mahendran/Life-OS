@@ -9,8 +9,8 @@
 
 import { prisma } from "@/lib/db";
 import type { ServiceUser } from "@/lib/calendar/service";
-import { AGENT_MODEL, getDeepSeek, isDeepSeekConfigured } from "./llm";
-import { memoryContext } from "./memory";
+import { AGENT_MODEL, executeWithDeepSeekPool, getDeepSeek, isDeepSeekConfigured } from "./llm";
+import { autoCapturePreferences, memoryContext } from "./memory";
 import { buildSystemPrompt } from "./prompts";
 import { TOOL_MAP, toolSpecs, parseWhen, type AgentContext, type ChangeSummary } from "./tools";
 import { runRules } from "./rules";
@@ -243,6 +243,9 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
     };
   }
 
+  // Auto-capture durable user habits and preferences (e.g. "I prefer studying at 9 AM")
+  void autoCapturePreferences(input.userId, input.message).catch(() => {});
+
   const memories = await memoryContext(input.userId, input.message).catch(() => "No stored notes yet.");
   const system = buildSystemPrompt({
     now,
@@ -268,17 +271,17 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
   let reply = "";
 
   try {
-    const client = getDeepSeek();
-
     for (let step = 0; step < 6; step += 1) {
-      const completion = await client.chat.completions.create({
-        model: AGENT_MODEL,
-        messages: messages as never,
-        tools: toolSpecs() as never,
-        tool_choice: "auto",
-        temperature: 0.2,
-        max_tokens: 900,
-      });
+      const completion = await executeWithDeepSeekPool((client) =>
+        client.chat.completions.create({
+          model: AGENT_MODEL,
+          messages: messages as never,
+          tools: toolSpecs() as never,
+          tool_choice: "auto",
+          temperature: 0.2,
+          max_tokens: 900,
+        }),
+      );
 
       tokensIn += completion.usage?.prompt_tokens ?? 0;
       tokensOut += completion.usage?.completion_tokens ?? 0;

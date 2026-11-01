@@ -5,6 +5,7 @@ import { Sidebar, type SidebarDomain } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { MobileTabs, ChatFab } from "./MobileTabs";
 import { CommandPalette } from "./CommandPalette";
+import { NotificationDrawer } from "@/components/notifications/NotificationDrawer";
 
 interface AppShellProps {
   userName: string;
@@ -17,6 +18,8 @@ interface AppShellProps {
 export function AppShell({ userName, domains, adherence, notificationCount, children }: AppShellProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [count, setCount] = useState(notificationCount);
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
@@ -56,9 +59,10 @@ export function AppShell({ userName, domains, adherence, notificationCount, chil
       <div className="relative flex min-w-0 flex-1 flex-col">
         <Topbar
           userName={userName}
-          notificationCount={notificationCount}
+          notificationCount={count}
           onOpenSearch={() => setSearchOpen(true)}
           onOpenMenu={() => setMenuOpen(true)}
+          onOpenNotifications={() => setNotificationsOpen(true)}
         />
         <main className="mx-auto w-full max-w-[100rem] flex-1 px-3 sm:px-4 lg:px-6 pt-3 sm:pt-5 pb-[calc(max(env(safe-area-inset-bottom,0px),16px)+6.5rem)] lg:pb-12">
           {children}
@@ -68,6 +72,11 @@ export function AppShell({ userName, domains, adherence, notificationCount, chil
       <MobileTabs />
       <ChatFab />
       <CommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <NotificationDrawer
+        open={notificationsOpen}
+        onClose={() => setNotificationsOpen(false)}
+        onCountChange={setCount}
+      />
     </div>
   );
 }

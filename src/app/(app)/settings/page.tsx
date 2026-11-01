@@ -2,7 +2,7 @@ import { Settings as SettingsIcon, Zap } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { requireProfile } from "@/lib/auth";
 import { monthTokens } from "@/lib/agent/usage";
-import { AGENT_MODEL, isDeepSeekConfigured } from "@/lib/agent/llm";
+import { AGENT_MODEL, getDeepSeekKeyCount, isDeepSeekConfigured } from "@/lib/agent/llm";
 import { PageBanner } from "@/components/shell/PageBanner";
 import { SettingsForm } from "@/components/settings/SettingsForm";
 import { PwaInstallCard } from "@/components/pwa/InstallButton";
@@ -30,7 +30,9 @@ export default async function SettingsPage() {
         aside={
           <div className="hidden rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-right sm:block">
             <p className="text-[0.66rem] text-white/45">
-              {isDeepSeekConfigured() ? AGENT_MODEL : "rules engine"}
+              {isDeepSeekConfigured()
+                ? `${AGENT_MODEL}${getDeepSeekKeyCount() > 1 ? ` · ${getDeepSeekKeyCount()} keys pooled` : ""}`
+                : "rules engine"}
             </p>
             <p className="mt-0.5 text-[0.58rem] uppercase tracking-[0.16em] text-white/25">agent engine</p>
           </div>

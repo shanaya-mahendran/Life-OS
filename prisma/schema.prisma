@@ -37,7 +37,8 @@ model User {
   tasks     Task[]
   memories  Memory[]
   agentLogs AgentLog[]
-  briefs    Brief[]
+  briefs        Brief[]
+  notifications Notification[]
 
   @@map("users")
 }
@@ -92,8 +93,9 @@ model Event {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  domain Domain @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  domain        Domain         @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  notifications Notification[]
 
   @@index([userId, start])
   @@index([userId, domainId, start])
@@ -179,3 +181,27 @@ model Brief {
   @@index([userId, forDate])
   @@map("briefs")
 }
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  eventId   String?
+  // "before_30m" | "before_15m" | "after_15m" | "morning_brief" | "review" | "system"
+  type      String
+  title     String
+  message   String
+  // "unread" | "read" | "confirmed_achieved" | "confirmed_missed" | "dismissed"
+  status    String   @default("unread")
+  link      String?
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now())
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event? @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, eventId, type])
+  @@index([userId, status])
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+

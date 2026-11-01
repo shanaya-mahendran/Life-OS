@@ -10,9 +10,10 @@ interface TopbarProps {
   notificationCount: number;
   onOpenSearch: () => void;
   onOpenMenu: () => void;
+  onOpenNotifications?: () => void;
 }
 
-export function Topbar({ userName, notificationCount, onOpenSearch }: TopbarProps) {
+export function Topbar({ userName, notificationCount, onOpenSearch, onOpenNotifications }: TopbarProps) {
   const firstName = userName.split(" ")[0];
 
   return (
@@ -72,10 +73,10 @@ export function Topbar({ userName, notificationCount, onOpenSearch }: TopbarProp
           </button>
 
           {/* Notifications Bell */}
-          <Link
-            href="/today#brief"
+          <button
+            onClick={onOpenNotifications}
             className="relative grid h-9 w-9 place-items-center rounded-xl border border-white/[0.07] bg-white/[0.04] text-white/60 transition hover:text-white"
-            aria-label="Notifications"
+            aria-label="Open notifications"
           >
             <Bell className="h-4 w-4" />
             {notificationCount > 0 && (
@@ -83,7 +84,7 @@ export function Topbar({ userName, notificationCount, onOpenSearch }: TopbarProp
                 {notificationCount > 9 ? "9+" : notificationCount}
               </span>
             )}
-          </Link>
+          </button>
 
           {/* User Avatar with active green dot */}
           <Link href="/settings" className="relative flex items-center focus:outline-none">
