@@ -9,7 +9,7 @@
 import OpenAI from "openai";
 
 export const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
-export const GROQ_DEFAULT_MODEL = "llama-3.3-70b-versatile";
+export const GROQ_DEFAULT_MODEL = process.env.GROQ_MODEL ?? "openai/gpt-oss-120b";
 
 export const DEEPSEEK_BASE_URL = process.env.DEEPSEEK_BASE_URL ?? "https://api.deepseek.com";
 export const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL ?? "deepseek-chat";
@@ -50,7 +50,7 @@ function initPool(): KeyEntry[] {
   const keys = getConfiguredKeys();
   if (!keys.length) return [];
 
-  return keys.map((key) => {
+  const pool = keys.map((key) => {
     const isGroq = key.startsWith("gsk_") || Boolean(process.env.GROQ_API_KEY && key === process.env.GROQ_API_KEY);
     const baseURL = isGroq ? GROQ_BASE_URL : DEEPSEEK_BASE_URL;
     const model = isGroq ? GROQ_DEFAULT_MODEL : DEEPSEEK_MODEL;
@@ -67,6 +67,11 @@ function initPool(): KeyEntry[] {
       cooldownUntil: 0,
     };
   });
+
+  // Prioritize active Groq keys first so requests succeed immediately
+  pool.sort((a, b) => (b.key.startsWith("gsk_") ? 1 : 0) - (a.key.startsWith("gsk_") ? 1 : 0));
+
+  return pool;
 }
 
 function getPool(): KeyEntry[] {
@@ -154,4 +159,7 @@ export async function executeWithDeepSeekPool<T>(
   throw lastError;
 }
 
-export const AGENT_MODEL = DEEPSEEK_MODEL;
+export const AGENT_MODEL =
+  process.env.GROQ_API_KEY || process.env.DEEPSEEK_API_KEY?.startsWith("gsk_")
+    ? (process.env.GROQ_MODEL ?? GROQ_DEFAULT_MODEL)
+    : (process.env.DEEPSEEK_MODEL ?? "deepseek-chat");
