@@ -6,6 +6,7 @@ import { Topbar } from "./Topbar";
 import { MobileTabs, ChatFab } from "./MobileTabs";
 import { CommandPalette } from "./CommandPalette";
 import { NotificationDrawer } from "@/components/notifications/NotificationDrawer";
+import { MobileInstallBanner } from "@/components/pwa/InstallButton";
 
 interface AppShellProps {
   userName: string;
@@ -64,6 +65,7 @@ export function AppShell({ userName, domains, adherence, notificationCount, chil
           onOpenMenu={() => setMenuOpen(true)}
           onOpenNotifications={() => setNotificationsOpen(true)}
         />
+        <MobileInstallBanner />
         <main className="mx-auto w-full max-w-[100rem] flex-1 px-3 sm:px-4 lg:px-6 pt-3 sm:pt-5 pb-[calc(max(env(safe-area-inset-bottom,0px),16px)+6.5rem)] lg:pb-12">
           {children}
         </main>

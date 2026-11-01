@@ -26,9 +26,9 @@ export function PwaRegister() {
 
     // ── 1. Register the Service Worker ──────────────────────────
     if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
+      const registerSW = () => {
         navigator.serviceWorker
-          .register("/sw.js")
+          .register("/sw.js", { scope: "/" })
           .then((registration) => {
             registration.onupdatefound = () => {
               const installingWorker = registration.installing;
@@ -44,7 +44,13 @@ export function PwaRegister() {
           .catch((error) => {
             console.warn("[PWA] ServiceWorker registration failed:", error);
           });
-      });
+      };
+
+      if (document.readyState === "complete" || document.readyState === "interactive") {
+        registerSW();
+      } else {
+        window.addEventListener("load", registerSW);
+      }
     }
 
     // ── 2. Capture beforeinstallprompt globally ─────────────────

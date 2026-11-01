@@ -488,3 +488,95 @@ export function PwaInstallCard() {
     </>
   );
 }
+
+/**
+ * Sleek mobile banner that appears at top of screen on mobile devices if PWA is not installed.
+ */
+export function MobileInstallBanner() {
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const standaloneQuery = window.matchMedia("(display-mode: standalone)");
+    const standalone =
+      standaloneQuery.matches ||
+      (window.navigator as unknown as { standalone?: boolean }).standalone === true;
+    setIsStandalone(standalone);
+
+    const onInstalled = () => setIsStandalone(true);
+    window.addEventListener("pwa-installed", onInstalled);
+    window.addEventListener("appinstalled", onInstalled);
+
+    return () => {
+      window.removeEventListener("pwa-installed", onInstalled);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
+  }, []);
+
+  if (isStandalone || dismissed) return null;
+
+  async function handleInstall() {
+    if (window.__pwaInstallPrompt) {
+      try {
+        await window.__pwaInstallPrompt.prompt();
+        const choice = await window.__pwaInstallPrompt.userChoice;
+        if (choice.outcome === "accepted") {
+          setIsStandalone(true);
+          window.dispatchEvent(new CustomEvent("pwa-installed"));
+        }
+        window.__pwaInstallPrompt = null;
+        return;
+      } catch {
+        // Fall back to modal
+      }
+    }
+    setModalOpen(true);
+  }
+
+  return (
+    <>
+      <div className="relative mx-3.5 my-2 flex items-center justify-between gap-3 rounded-2xl border border-violet-500/35 bg-[linear-gradient(135deg,rgba(45,20,90,0.85),rgba(15,10,30,0.95))] p-2.5 shadow-[0_6px_24px_rgba(124,92,255,0.3)] backdrop-blur-xl lg:hidden animate-rise">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-xl border border-white/10 shadow-[0_0_12px_rgba(168,85,247,0.45)]">
+            <img
+              src="/icons/icon-192.png"
+              alt="LifeOS"
+              className="h-full w-full object-cover"
+            />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="font-display text-[0.82rem] font-bold text-white truncate">LifeOS App</span>
+              <span className="rounded bg-violet-500/30 px-1 py-0.2 text-[0.55rem] font-semibold text-violet-200">
+                PWA
+              </span>
+            </div>
+            <p className="text-[0.67rem] text-white/55 truncate">Add to home screen for 1-tap launch</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            onClick={() => void handleInstall()}
+            className="flex items-center gap-1 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-600 px-3 py-1.5 text-[0.74rem] font-bold text-white shadow-[0_0_12px_rgba(139,92,246,0.5)] active:scale-95 transition"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Install
+          </button>
+          <button
+            onClick={() => setDismissed(true)}
+            className="grid h-7 w-7 place-items-center rounded-lg text-white/40 hover:text-white transition"
+            aria-label="Dismiss banner"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+
+      <InstallModal open={modalOpen} onClose={() => setModalOpen(false)} />
+    </>
+  );
+}
+

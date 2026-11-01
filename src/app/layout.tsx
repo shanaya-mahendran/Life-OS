@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   title: "LifeOS — Plan. Achieve. Thrive.",
   description:
     "One chat message, one master calendar. Career, studies, competitions, health and personal life organised by an AI planning agent.",
+  manifest: "/manifest.json",
   applicationName: "LifeOS",
   appleWebApp: {
     capable: true,
@@ -17,6 +18,7 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
+      { url: "/favicon.ico" },
       { url: "/favicon.png", sizes: "64x64", type: "image/png" },
       { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
@@ -40,6 +42,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className="dark">
       <head>
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+        <link rel="icon" type="image/x-icon" href="/favicon.ico" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
