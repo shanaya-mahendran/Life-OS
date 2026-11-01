@@ -241,4 +241,22 @@
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
   }
+
+  /* Mobile PWA & Touch Optimizations */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .safe-area-bottom {
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 12px);
+  }
+
+  .safe-area-top {
+    padding-top: max(env(safe-area-inset-top, 0px), 12px);
+  }
 }
+

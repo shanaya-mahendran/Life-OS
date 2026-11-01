@@ -60,7 +60,9 @@ export function AppShell({ userName, domains, adherence, notificationCount, chil
           onOpenSearch={() => setSearchOpen(true)}
           onOpenMenu={() => setMenuOpen(true)}
         />
-        <main className="mx-auto w-full max-w-[100rem] flex-1 px-4 pb-28 pt-5 lg:px-6 lg:pb-12">{children}</main>
+        <main className="mx-auto w-full max-w-[100rem] flex-1 px-3 sm:px-4 lg:px-6 pt-3 sm:pt-5 pb-[calc(max(env(safe-area-inset-bottom,0px),12px)+5.5rem)] lg:pb-12">
+          {children}
+        </main>
       </div>
 
       <MobileTabs />

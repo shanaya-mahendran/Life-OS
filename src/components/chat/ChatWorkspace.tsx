@@ -358,7 +358,7 @@ export function ChatWorkspace({
                 }}
                 rows={1}
                 placeholder="Ask LifeOS anything — “move karate to 7 PM today”…"
-                className="max-h-28 min-h-[2.1rem] flex-1 resize-none bg-transparent px-2 py-1.5 text-[0.84rem] text-white outline-none placeholder:text-white/30"
+                className="max-h-28 min-h-[2.1rem] flex-1 resize-none bg-transparent px-2 py-1.5 text-[16px] sm:text-[0.84rem] text-white outline-none placeholder:text-white/30"
               />
               <button
                 type="submit"
