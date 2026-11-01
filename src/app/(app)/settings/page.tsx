@@ -5,6 +5,7 @@ import { monthTokens } from "@/lib/agent/usage";
 import { AGENT_MODEL, isDeepSeekConfigured } from "@/lib/agent/llm";
 import { PageBanner } from "@/components/shell/PageBanner";
 import { SettingsForm } from "@/components/settings/SettingsForm";
+import { PwaInstallCard } from "@/components/pwa/InstallButton";
 
 export const metadata = { title: "Settings · LifeOS" };
 export const dynamic = "force-dynamic";
@@ -35,6 +36,8 @@ export default async function SettingsPage() {
           </div>
         }
       />
+
+      <PwaInstallCard />
 
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="surface flex items-center gap-3 p-3.5">
