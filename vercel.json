@@ -8,10 +8,6 @@
     {
       "path": "/api/cron/review",
       "schedule": "0 14 * * 0"
-    },
-    {
-      "path": "/api/cron/notifications",
-      "schedule": "*/10 * * * *"
     }
   ]
 }

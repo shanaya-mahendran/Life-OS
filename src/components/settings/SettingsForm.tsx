@@ -89,21 +89,23 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
     }
   }
 
-  async function resetData() {
+  async function resetData(mode: "clear" | "reset" = "clear") {
     setResetting(true);
     try {
       const response = await fetch("/api/account", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode: "reset" }),
+        body: JSON.stringify({ mode }),
       });
       if (!response.ok) {
         toast("Could not reset the data.", "error");
         return;
       }
       setResetOpen(false);
-      toast("Calendar cleared and the example week restored.");
-      startTransition(() => router.refresh());
+      toast(mode === "clear" ? "Calendar wiped clean!" : "Calendar reset & example week restored.");
+      setTimeout(() => {
+        window.location.href = "/calendar";
+      }, 600);
     } finally {
       setResetting(false);
     }
@@ -310,27 +312,37 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
       <Modal
         open={resetOpen}
         onClose={() => setResetOpen(false)}
-        title="Reset the calendar?"
-        subtitle="Events, tasks, memories and agent logs are cleared, then the example week is restored."
-        size="sm"
+        title="Reset or Clear Calendar"
+        subtitle="Choose whether to wipe all events for a fresh start, or restore the example week."
+        size="md"
         footer={
-          <div className="flex justify-end gap-2">
-            <button onClick={() => setResetOpen(false)} className="btn btn-ghost">
-              Keep my data
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <button onClick={() => setResetOpen(false)} className="btn btn-ghost text-[0.78rem]">
+              Cancel
             </button>
             <button
-              onClick={() => void resetData()}
+              onClick={() => void resetData("reset")}
               disabled={resetting}
-              className="btn border border-rose-400/30 bg-rose-500/15 text-rose-100"
+              className="btn btn-ghost border border-white/10 text-[0.78rem]"
             >
               {resetting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
-              Reset
+              Restore starter week
+            </button>
+            <button
+              onClick={() => void resetData("clear")}
+              disabled={resetting}
+              className="btn border border-rose-400/30 bg-rose-500/15 text-[0.78rem] text-rose-100 hover:bg-rose-500/25"
+            >
+              {resetting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+              Clear all events
             </button>
           </div>
         }
       >
         <p className="text-[0.78rem] leading-relaxed text-white/55">
-          Your account, domains and settings stay. This cannot be undone — export first if you want a copy.
+          <strong className="text-white">Clear all events:</strong> Wipes all events, tasks, notifications and briefs so you have a completely fresh, empty calendar.
+          <br />
+          <strong className="text-white">Restore starter week:</strong> Clears custom data and loads the curated example weekly schedule.
         </p>
       </Modal>
 

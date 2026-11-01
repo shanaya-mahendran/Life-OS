@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireProfile } from "@/lib/auth";
-import { confirmPlanAchievement } from "@/lib/notifications";
+import { confirmPlanAchievement, generateEventNotifications } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +9,9 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const { profile } = await requireProfile();
+
+    // Auto-generate fresh alerts (30m, 15m, 15m after) on-demand (works seamlessly on Vercel Hobby!)
+    await generateEventNotifications().catch(() => {});
 
     const [notifications, unreadCount] = await Promise.all([
       prisma.notification.findMany({

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { jsonError, requireApiUser } from "@/lib/api";
-import { resetDemoData, seedStarterWeek } from "@/lib/account";
+import { clearCalendarData, resetDemoData, seedStarterWeek } from "@/lib/account";
 import { formatZodError } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
@@ -75,16 +75,19 @@ export async function PATCH(request: Request) {
   return NextResponse.json({ ok: true });
 }
 
-/** `{ mode: "reset" }` clears calendar data and re-seeds the example week. */
+/** `{ mode: "clear" | "reset" | "seed" }` clears calendar data or re-seeds the example week. */
 export async function DELETE(request: Request) {
   const auth = await requireApiUser();
   if ("response" in auth) return auth.response;
 
   const body = await request.json().catch(() => ({}));
-  const mode = (body as { mode?: string }).mode === "seed" ? "seed" : "reset";
+  const rawMode = (body as { mode?: string }).mode;
+  const mode = rawMode === "seed" ? "seed" : rawMode === "clear" ? "clear" : "reset";
 
   if (mode === "seed") {
     await seedStarterWeek(auth.ctx.userId);
+  } else if (mode === "clear") {
+    await clearCalendarData(auth.ctx.userId);
   } else {
     await resetDemoData(auth.ctx.userId);
   }
