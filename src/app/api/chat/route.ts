@@ -110,3 +110,15 @@ export async function GET() {
     }),
   });
 }
+
+/** Clear all agent chat history for the user (Start New Chat). */
+export async function DELETE() {
+  const auth = await requireApiUser();
+  if ("response" in auth) return auth.response;
+
+  await prisma.agentLog.deleteMany({
+    where: { userId: auth.ctx.userId },
+  });
+
+  return NextResponse.json({ ok: true, message: "Chat cleared successfully." });
+}

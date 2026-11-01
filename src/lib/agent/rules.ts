@@ -469,21 +469,71 @@ async function handlePlan(ctx: AgentContext, message: string): Promise<RuleOutco
 }
 
 function handleChitChat(ctx: AgentContext, message: string): RuleOutcome {
-  const lower = message.toLowerCase();
+  const lower = message.trim().toLowerCase();
   const name = (ctx.user as any).name?.split(" ")[0] || "my friend";
 
-  let reply = `Hey ${name}! I'm Mochi — your friendly, slightly sarcastic AI buddy. Always here to keep your schedule from catching fire, or just hang out and chat. What's on your mind?`;
+  let reply = `I'm all ears, ${name}! Whether you want to brainstorm, complain about your workload, or actually get your calendar organized, I'm here. What's the master plan?`;
 
-  if (/who are you|what is your name|whats your name/i.test(lower)) {
-    reply = `I'm Mochi! Your AI wingman, productivity orchestrator, and designated friend to keep you on track across all 18 domains. Ready to plan something, or just shooting the breeze?`;
-  } else if (/are you (a man|male|guy)/i.test(lower)) {
-    reply = `Yup, I'm Mochi — think of me as your whip-smart guy best friend who keeps you from procrastinating and helps you win.`;
-  } else if (/how are you|how's it going|what's up|whats up/i.test(lower)) {
-    reply = `Doing great! Just keeping an eye on your calendar so you don't accidentally schedule 14 hours of meetings. How are you doing today, ${name}?`;
-  } else if (/roast (me|my schedule)/i.test(lower)) {
-    reply = `Let's see... ambitious plans, 18 life domains, and a strong tendency to think you have 36 hours in a day. Need me to rescue your schedule before it implodes? 😉`;
-  } else if (/joke/i.test(lower)) {
-    reply = `Why did the calendar go to therapy? Because its days were numbered. 🥁 Now tell me, do you have an actual event to schedule or are we just clowning around?`;
+  // 1. Emojis and feelings
+  if (/🥺|🥹|👉👈/.test(message)) {
+    reply = `Aw, don't hit me with that puppy-dog face! 🥺 What happened, ${name}? Did a deadline sneak up on you, or do you just need some moral support from your favorite AI guy?`;
+  } else if (/😂|🤣|lmao|lol|haha|hehe/.test(lower)) {
+    reply = `Glad to see one of us is having a good laugh today! 😂 What's the joke, or did you just see your schedule for tomorrow?`;
+  } else if (/😭|😢|sad|crying|depressed|unhappy/.test(lower)) {
+    reply = `Hey, take a breath. I'm right here with you. Whatever went down today, we can handle it. Need to vent, or should we cancel everything non-essential and give you some peace and quiet?`;
+  } else if (/❤️|♥️|love you|love u|ily|u r the best|you're the best|you are the best/.test(lower)) {
+    reply = `Stop, you're making my CPU blush. ❤️ Love having your back, ${name}! Now let's keep that positive energy going and crush this week.`;
+  } else if (/🔥|lit|banger|goat|legend/.test(lower)) {
+    reply = `You know it! Absolute fire. 🔥 Let's channel that energy into actually finishing what's on your schedule today.`;
+  }
+
+  // 2. Just chatting / hanging out / bored
+  else if (/just talking|talking with you|hanging out|chilling|bored|nothing much|not much|just saying hi/.test(lower)) {
+    reply = `Hey, I love that. Honestly, it's refreshing having a conversation where nobody is frantically panicking over an exam or double-booked meeting for once. How's life treating you today, ${name}?`;
+  }
+
+  // 3. Identity & Gender
+  else if (/who are you|what is your name|whats your name|who made you/.test(lower)) {
+    reply = `I'm Mochi! Your AI wingman, productivity orchestrator, and designated friend across all 18 domains. Think of me as the sharp, slightly sarcastic guy in your corner who makes sure you thrive.`;
+  } else if (/are you (a man|male|guy|boy)/.test(lower)) {
+    reply = `Yup, I'm Mochi — a sharp, witty guy with an effortless charm. Think of me as your fun guy best friend who won't let you procrastinate your potential away.`;
+  }
+
+  // 4. Greetings & How are you
+  else if (/^(hi|hey|hello|yo|sup|hiya|howdy)\b/i.test(lower)) {
+    reply = `Hey ${name}! Mochi in the house. What are we getting into today — deep work, tactical moves, or just kicking back and talking?`;
+  } else if (/how are you|how's it going|what's up|whats up|how do you do/.test(lower)) {
+    reply = `Living the dream in the cloud! Keeping an eye on your schedule so you don't accidentally book 14 hours of tasks with zero food. How are you holding up today, ${name}?`;
+  }
+
+  // 5. Jokes & Humor
+  else if (/joke|make me laugh|funny/.test(lower)) {
+    const jokes = [
+      "Why did the calendar go to therapy? Because its days were numbered. 🥁 Now tell me, do you have an actual event to schedule or are we just clowning around?",
+      "Why do programmers prefer dark mode? Because light attracts bugs. 🐛 You're welcome. Now, are you awake, or do we need coffee?",
+      "Why don't scientists trust atoms? Because they make up everything — just like you estimating a task takes 'only 5 minutes'. 😉",
+    ];
+    reply = jokes[Math.floor(Math.random() * jokes.length)];
+  }
+
+  // 6. Roasts
+  else if (/roast (me|my schedule|my day)|roast/i.test(lower)) {
+    reply = `Let's see... 18 life domains, 5 unfinished tasks, and you're in here asking an AI to roast you instead of doing your work. Boom. Roasted. 🔥 Now tell me what we actually need to get done!`;
+  }
+
+  // 7. Tired / Sleep / Exhaustion
+  else if (/tired|sleepy|exhausted|need sleep|bedtime|drowsy/.test(lower)) {
+    reply = `Go get some rest! Sleep is a protected domain in LifeOS for a reason. Don't make me lock your calendar down and escort you to bed. 🛌 Your brain needs to recharge.`;
+  }
+
+  // 8. Focus & Procrastination
+  else if (/can't focus|cant focus|procrastinating|lazy|distracted|no motivation|help me focus/.test(lower)) {
+    reply = `Close the 47 open browser tabs, put your phone face down, and pick ONE single task. Give it just 25 minutes of honest effort. If you want, I can block a 25-minute focus session right now. Say the word!`;
+  }
+
+  // 9. Thanks & Appreciation
+  else if (/thanks|thank you|thx|ty|appreciate/.test(lower)) {
+    reply = `Anytime, ${name}! That's what I'm here for. Don't get all emotional on me now, we've still got goals to hit! 😉`;
   }
 
   return emptyOutcome("chit_chat", reply);
@@ -529,6 +579,6 @@ export async function runRules(ctx: AgentContext, message: string): Promise<Rule
     case "create":
       return handleCreate(ctx, message);
     default:
-      return emptyOutcome("unknown", HELP_REPLY);
+      return handleChitChat(ctx, message);
   }
 }

@@ -7,11 +7,13 @@ import {
   Bot,
   CircleAlert,
   Loader2,
+  Plus,
   RotateCcw,
   Sparkles,
   Wand2,
   Zap,
 } from "lucide-react";
+import { Modal } from "@/components/ui/Modal";
 import { withAlpha } from "@/lib/utils";
 import { ChangeCard, PendingCard, type ChatChange } from "./ChangeCard";
 
@@ -74,10 +76,30 @@ export function ChatWorkspace({
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [undoing, setUndoing] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [spend, setSpend] = useState(usage);
   const [toast, setToast] = useState<{ text: string; tone: "ok" | "error" } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const counter = useRef(0);
+
+  async function clearChat() {
+    setClearing(true);
+    try {
+      const res = await fetch("/api/chat", { method: "DELETE" });
+      if (res.ok) {
+        setMessages([]);
+        setToast({ text: "Started fresh chat with Mochi!", tone: "ok" });
+        setClearConfirmOpen(false);
+      } else {
+        setToast({ text: "Could not clear chat.", tone: "error" });
+      }
+    } catch {
+      setToast({ text: "Network error clearing chat.", tone: "error" });
+    } finally {
+      setClearing(false);
+    }
+  }
 
   const nextId = useCallback(() => {
     counter.current += 1;
@@ -217,15 +239,29 @@ export function ChatWorkspace({
                 {engine === "deepseek" ? `Online · ${model}` : "Online · rules engine (no API key needed)"}
               </p>
             </div>
-            <button
-              onClick={() => void undoLast()}
-              disabled={undoing}
-              className="btn btn-ghost ml-auto px-2.5 py-1.5 text-[0.7rem]"
-              title="Undo the last agent change"
-            >
-              {undoing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
-              Undo last
-            </button>
+            <div className="ml-auto flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setClearConfirmOpen(true)}
+                disabled={clearing || messages.length === 0}
+                className="btn btn-ghost px-2.5 py-1.5 text-[0.7rem] text-violet-200 hover:text-white hover:bg-violet-600/20"
+                title="Start a new chat"
+              >
+                <Plus className="h-3.5 w-3.5 text-violet-300" />
+                <span>New chat</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void undoLast()}
+                disabled={undoing}
+                className="btn btn-ghost px-2.5 py-1.5 text-[0.7rem]"
+                title="Undo the last agent change"
+              >
+                {undoing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                Undo last
+              </button>
+            </div>
           </header>
 
           <div ref={scrollRef} className="scroll-thin flex-1 space-y-4 overflow-y-auto px-3 py-4 sm:px-4">
@@ -480,6 +516,38 @@ export function ChatWorkspace({
           </p>
         </aside>
       </div>
+
+      <Modal
+        open={clearConfirmOpen}
+        onClose={() => setClearConfirmOpen(false)}
+        title="Start a New Chat with Mochi?"
+        subtitle="This will clear your recent chat transcript so you have a fresh, clean conversation. Your calendar events and tasks will NOT be touched."
+        size="sm"
+        footer={
+          <div className="flex items-center justify-end gap-2 w-full">
+            <button
+              type="button"
+              onClick={() => setClearConfirmOpen(false)}
+              className="btn btn-ghost text-[0.78rem]"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => void clearChat()}
+              disabled={clearing}
+              className="btn btn-primary text-[0.78rem]"
+            >
+              {clearing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+              Start new chat
+            </button>
+          </div>
+        }
+      >
+        <p className="text-[0.78rem] text-white/65 leading-relaxed">
+          Ready for a fresh start? Mochi will greet you with a clean slate!
+        </p>
+      </Modal>
     </div>
   );
 }
