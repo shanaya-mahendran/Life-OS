@@ -462,6 +462,17 @@ export function CalendarBoard({
         title={pendingWrite?.kind === "delete" ? "Cancel this event?" : "Confirm this change"}
         subtitle="Protected time and conflicts need an explicit yes."
         size="sm"
+        footer={
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setPendingWrite(null)} className="btn btn-ghost">
+              Keep as is
+            </button>
+            <button onClick={() => void confirmPending()} disabled={busy} className="btn btn-primary">
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {pendingWrite?.kind === "delete" ? "Cancel event" : "Save anyway"}
+            </button>
+          </div>
+        }
       >
         <div className="space-y-2">
           {pendingWrite?.conflicts.map((conflict, index) => (
@@ -473,15 +484,6 @@ export function CalendarBoard({
               {conflict.message}
             </div>
           ))}
-        </div>
-        <div className="mt-4 flex justify-end gap-2">
-          <button onClick={() => setPendingWrite(null)} className="btn btn-ghost">
-            Keep as is
-          </button>
-          <button onClick={() => void confirmPending()} disabled={busy} className="btn btn-primary">
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {pendingWrite?.kind === "delete" ? "Cancel event" : "Save anyway"}
-          </button>
         </div>
       </Modal>
 

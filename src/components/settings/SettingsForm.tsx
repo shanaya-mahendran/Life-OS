@@ -313,23 +313,25 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
         title="Reset the calendar?"
         subtitle="Events, tasks, memories and agent logs are cleared, then the example week is restored."
         size="sm"
+        footer={
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setResetOpen(false)} className="btn btn-ghost">
+              Keep my data
+            </button>
+            <button
+              onClick={() => void resetData()}
+              disabled={resetting}
+              className="btn border border-rose-400/30 bg-rose-500/15 text-rose-100"
+            >
+              {resetting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+              Reset
+            </button>
+          </div>
+        }
       >
         <p className="text-[0.78rem] leading-relaxed text-white/55">
           Your account, domains and settings stay. This cannot be undone — export first if you want a copy.
         </p>
-        <div className="mt-4 flex justify-end gap-2">
-          <button onClick={() => setResetOpen(false)} className="btn btn-ghost">
-            Keep my data
-          </button>
-          <button
-            onClick={() => void resetData()}
-            disabled={resetting}
-            className="btn border border-rose-400/30 bg-rose-500/15 text-rose-100"
-          >
-            {resetting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
-            Reset
-          </button>
-        </div>
       </Modal>
 
       <ToastStack toasts={toasts} onDismiss={(id) => setToasts((current) => current.filter((item) => item.id !== id))} />

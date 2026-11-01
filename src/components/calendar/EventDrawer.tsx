@@ -40,7 +40,7 @@ export function EventDrawer({ event, timeZone, onClose, onEdit, onNudge, onDelet
   if (!event) return null;
 
   return (
-    <aside className="surface fixed inset-x-3 bottom-20 z-40 max-h-[68vh] overflow-y-auto p-4 lg:sticky lg:inset-auto lg:bottom-auto lg:top-[5.2rem] lg:z-10 lg:max-h-[calc(100dvh-7rem)] lg:w-[21rem] lg:shrink-0">
+    <aside className="surface fixed inset-x-3 bottom-[calc(max(env(safe-area-inset-bottom,0px),12px)+5.5rem)] z-40 max-h-[68vh] overflow-y-auto p-4 shadow-2xl lg:sticky lg:inset-auto lg:bottom-auto lg:top-[5.2rem] lg:z-10 lg:max-h-[calc(100dvh-7rem)] lg:w-[21rem] lg:shrink-0">
       <div className="mb-3 flex items-start justify-between gap-2">
         <div
           className="flex items-center gap-2.5 rounded-xl border px-2.5 py-2"

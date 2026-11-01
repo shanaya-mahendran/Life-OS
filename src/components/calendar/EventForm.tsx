@@ -145,6 +145,35 @@ export function EventForm({
           ? "The agent checks conflicts before saving, exactly like the chat does."
           : `${event?.domainName} · ${event ? dayLabel(event.start, timeZone) : ""}`
       }
+      footer={
+        <div className="flex items-center justify-end gap-2">
+          <button type="button" onClick={onClose} className="btn btn-ghost">
+            Cancel
+          </button>
+          {conflicts.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => submit(true)}
+              disabled={pending || !title.trim()}
+              className="btn border border-amber-400/30 bg-amber-400/15 text-amber-100 hover:bg-amber-400/25"
+            >
+              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Save anyway
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => submit(false)}
+              disabled={pending || !title.trim()}
+              className="btn btn-primary"
+              style={{ boxShadow: `0 10px 26px -12px ${withAlpha(accent, 0.9)}` }}
+            >
+              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {mode === "create" ? "Create event" : "Save changes"}
+            </button>
+          )}
+        </div>
+      }
     >
       <div className="space-y-3.5">
         <label className="block space-y-1.5">
@@ -259,34 +288,6 @@ export function EventForm({
               ))}
             </ul>
           </div>
-        )}
-      </div>
-
-      <div className="mt-5 flex items-center justify-end gap-2">
-        <button type="button" onClick={onClose} className="btn btn-ghost">
-          Cancel
-        </button>
-        {conflicts.length > 0 ? (
-          <button
-            type="button"
-            onClick={() => submit(true)}
-            disabled={pending || !title.trim()}
-            className="btn border border-amber-400/30 bg-amber-400/15 text-amber-100 hover:bg-amber-400/25"
-          >
-            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Save anyway
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => submit(false)}
-            disabled={pending || !title.trim()}
-            className="btn btn-primary"
-            style={{ boxShadow: `0 10px 26px -12px ${withAlpha(accent, 0.9)}` }}
-          >
-            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {mode === "create" ? "Create event" : "Save changes"}
-          </button>
         )}
       </div>
     </Modal>

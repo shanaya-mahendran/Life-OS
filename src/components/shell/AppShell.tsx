@@ -31,7 +31,7 @@ export function AppShell({ userName, domains, adherence, notificationCount, chil
 
   return (
     <div className="relative flex min-h-dvh bg-[#06040e]">
-      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
         <div className="aurora-blob left-[-10%] top-[-12%] h-[560px] w-[560px] animate-aurora bg-violet-700/25" />
         <div className="aurora-blob bottom-[-18%] right-[-8%] h-[600px] w-[600px] animate-aurora bg-indigo-700/20" />
         <div className="aurora-blob left-[45%] top-[30%] h-[420px] w-[420px] bg-fuchsia-700/10" />
@@ -53,14 +53,14 @@ export function AppShell({ userName, domains, adherence, notificationCount, chil
         onClose={() => setMenuOpen(false)}
       />
 
-      <div className="relative z-10 flex min-w-0 flex-1 flex-col">
+      <div className="relative flex min-w-0 flex-1 flex-col">
         <Topbar
           userName={userName}
           notificationCount={notificationCount}
           onOpenSearch={() => setSearchOpen(true)}
           onOpenMenu={() => setMenuOpen(true)}
         />
-        <main className="mx-auto w-full max-w-[100rem] flex-1 px-3 sm:px-4 lg:px-6 pt-3 sm:pt-5 pb-[calc(max(env(safe-area-inset-bottom,0px),12px)+5.5rem)] lg:pb-12">
+        <main className="mx-auto w-full max-w-[100rem] flex-1 px-3 sm:px-4 lg:px-6 pt-3 sm:pt-5 pb-[calc(max(env(safe-area-inset-bottom,0px),16px)+6.5rem)] lg:pb-12">
           {children}
         </main>
       </div>

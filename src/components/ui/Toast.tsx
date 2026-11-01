@@ -11,7 +11,7 @@ export interface ToastMessage {
 
 export function ToastStack({ toasts, onDismiss }: { toasts: ToastMessage[]; onDismiss: (id: number) => void }) {
   return (
-    <div className="pointer-events-none fixed bottom-24 left-1/2 z-[80] flex w-[min(92vw,26rem)] -translate-x-1/2 flex-col gap-2 lg:bottom-6">
+    <div className="pointer-events-none fixed bottom-[calc(max(env(safe-area-inset-bottom,0px),12px)+5.5rem)] left-1/2 z-[110] flex w-[min(92vw,26rem)] -translate-x-1/2 flex-col gap-2 lg:bottom-6">
       {toasts.map((toast) => (
         <Toast key={toast.id} toast={toast} onDismiss={onDismiss} />
       ))}
