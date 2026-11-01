@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Bell, Search } from "lucide-react";
+import { Bell, LogOut, Search } from "lucide-react";
 import { initials } from "@/lib/utils";
+import { signOutUser } from "@/lib/auth-client";
 
 interface TopbarProps {
   userName: string;
@@ -87,7 +88,7 @@ export function Topbar({ userName, notificationCount, onOpenSearch, onOpenNotifi
           </button>
 
           {/* User Avatar with active green dot */}
-          <Link href="/settings" className="relative flex items-center focus:outline-none">
+          <Link href="/settings" className="relative flex items-center focus:outline-none" title="Open Settings">
             <div className="relative grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-fuchsia-500 via-violet-500 to-indigo-600 text-[0.72rem] font-bold text-white shadow-[0_0_12px_rgba(168,85,247,0.35)] ring-2 ring-white/10">
               {initials(userName)}
               {/* Online indicator dot as in user reference */}
@@ -95,6 +96,17 @@ export function Topbar({ userName, notificationCount, onOpenSearch, onOpenNotifi
             </div>
             <span className="hidden text-[0.8rem] font-medium text-white/80 sm:ml-2 sm:block">{firstName}</span>
           </Link>
+
+          {/* Quick Sign Out Button */}
+          <button
+            type="button"
+            onClick={() => void signOutUser()}
+            title="Sign out of LifeOS"
+            className="grid h-9 w-9 place-items-center rounded-xl border border-white/[0.07] bg-white/[0.04] text-white/50 transition hover:bg-rose-500/15 hover:border-rose-500/30 hover:text-rose-200"
+            aria-label="Sign out"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
         </div>
       </div>
     </header>

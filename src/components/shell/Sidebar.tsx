@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronRight, X } from "lucide-react";
+import { ChevronRight, LogOut, X } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { NAV_ITEMS } from "./nav";
 import { cn, withAlpha } from "@/lib/utils";
+import { SidebarInstallButton } from "@/components/pwa/InstallButton";
+import { signOutUser } from "@/lib/auth-client";
 
 export interface SidebarDomain {
   slug: string;
@@ -108,6 +110,18 @@ export function Sidebar({ domains, adherence, mobileOpen, onClose }: SidebarProp
           />
         </div>
         <p className="mt-2 text-[0.66rem] text-white/45">{adherence}% of this week&apos;s tasks done</p>
+      </div>
+
+      <div className="mt-auto space-y-2 pt-2 border-t border-white/[0.06]">
+        <SidebarInstallButton />
+        <button
+          type="button"
+          onClick={() => void signOutUser()}
+          className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-[0.8rem] font-medium text-white/50 transition hover:bg-rose-500/10 hover:text-rose-300"
+        >
+          <LogOut className="h-4 w-4" />
+          <span>Sign out</span>
+        </button>
       </div>
     </div>
   );

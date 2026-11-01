@@ -1,33 +1,379 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle2, Download, Share2, Smartphone } from "lucide-react";
+import {
+  CheckCircle2,
+  Copy,
+  Download,
+  ExternalLink,
+  Laptop,
+  Monitor,
+  Share2,
+  Smartphone,
+  X,
+} from "lucide-react";
+import { Modal } from "@/components/ui/Modal";
 
+/**
+ * Creates and downloads a direct desktop shortcut (.url file)
+ * that opens LifeOS in the user's browser / window.
+ */
+export function downloadDesktopShortcut(): void {
+  if (typeof window === "undefined") return;
+  const currentUrl = window.location.origin;
+  const content = `[InternetShortcut]\r\nURL=${currentUrl}/\r\nIconIndex=0\r\n`;
+  const blob = new Blob([content], { type: "application/internet-shortcut" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "LifeOS-App.url";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Triggers the install prompt if available, or dispatches lifeos-open-install.
+ */
+export async function triggerAppInstall(): Promise<void> {
+  if (typeof window === "undefined") return;
+
+  if (window.__pwaInstallPrompt) {
+    try {
+      await window.__pwaInstallPrompt.prompt();
+      const choice = await window.__pwaInstallPrompt.userChoice;
+      if (choice.outcome === "accepted") {
+        window.dispatchEvent(new CustomEvent("pwa-installed"));
+      }
+      window.__pwaInstallPrompt = null;
+      return;
+    } catch {
+      // Fall through to opening modal
+    }
+  }
+
+  window.dispatchEvent(new CustomEvent("lifeos-open-install"));
+}
+
+export function InstallModal({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const [platformTab, setPlatformTab] = useState<"desktop" | "ios" | "android">("desktop");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const ua = window.navigator.userAgent.toLowerCase();
+    if (/iphone|ipad|ipod/.test(ua)) {
+      setPlatformTab("ios");
+    } else if (/android/.test(ua)) {
+      setPlatformTab("android");
+    } else {
+      setPlatformTab("desktop");
+    }
+  }, [open]);
+
+  function copyLink() {
+    if (typeof window === "undefined") return;
+    navigator.clipboard.writeText(window.location.origin);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  }
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Download & Install LifeOS App"
+      subtitle="Install LifeOS on your device for full-screen view, instant offline launch & desktop shortcut."
+      size="md"
+      footer={
+        <div className="flex flex-wrap items-center justify-between gap-2.5 w-full">
+          <button
+            onClick={downloadDesktopShortcut}
+            className="flex items-center gap-2 rounded-xl border border-violet-400/40 bg-violet-600/25 px-3 py-2 text-[0.78rem] font-semibold text-violet-200 transition hover:bg-violet-600/40"
+          >
+            <Download className="h-4 w-4" />
+            Download Desktop Launcher (.url)
+          </button>
+          <button onClick={onClose} className="btn btn-primary text-[0.78rem] ml-auto">
+            Got it
+          </button>
+        </div>
+      }
+    >
+      <div className="space-y-4">
+        {/* Platform tabs */}
+        <div className="grid grid-cols-3 gap-1.5 rounded-2xl bg-white/[0.04] p-1 border border-white/10">
+          <button
+            type="button"
+            onClick={() => setPlatformTab("desktop")}
+            className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-[0.75rem] font-medium transition ${
+              platformTab === "desktop"
+                ? "bg-violet-600 text-white shadow-md font-semibold"
+                : "text-white/60 hover:text-white"
+            }`}
+          >
+            <Monitor className="h-3.5 w-3.5" />
+            Desktop
+          </button>
+          <button
+            type="button"
+            onClick={() => setPlatformTab("android")}
+            className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-[0.75rem] font-medium transition ${
+              platformTab === "android"
+                ? "bg-violet-600 text-white shadow-md font-semibold"
+                : "text-white/60 hover:text-white"
+            }`}
+          >
+            <Smartphone className="h-3.5 w-3.5" />
+            Android
+          </button>
+          <button
+            type="button"
+            onClick={() => setPlatformTab("ios")}
+            className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-[0.75rem] font-medium transition ${
+              platformTab === "ios"
+                ? "bg-violet-600 text-white shadow-md font-semibold"
+                : "text-white/60 hover:text-white"
+            }`}
+          >
+            <Share2 className="h-3.5 w-3.5" />
+            iPhone / iPad
+          </button>
+        </div>
+
+        {/* Desktop Tab */}
+        {platformTab === "desktop" && (
+          <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-[0.8rem]">
+            <div className="flex items-start gap-3">
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-violet-500/20 text-xs font-bold text-violet-300">
+                1
+              </span>
+              <div>
+                <span className="font-semibold text-white">Browser Address Bar (Chrome / Edge / Brave):</span>
+                <p className="mt-0.5 text-white/60 text-[0.75rem]">
+                  Look at the right side of the URL address bar at the top of your screen. Click the{" "}
+                  <strong className="text-violet-300">Install icon (⊕ or computer screen)</strong> and choose{" "}
+                  <strong className="text-white">&quot;Install&quot;</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-violet-500/20 text-xs font-bold text-violet-300">
+                2
+              </span>
+              <div>
+                <span className="font-semibold text-white">Via Browser Menu:</span>
+                <p className="mt-0.5 text-white/60 text-[0.75rem]">
+                  Click the three vertical dots <strong className="text-white">⋮</strong> in the top-right corner →{" "}
+                  <strong className="text-white">&quot;Save and share&quot;</strong> →{" "}
+                  <strong className="text-violet-300">&quot;Install LifeOS as an App&quot;</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-violet-500/20 text-xs font-bold text-violet-300">
+                3
+              </span>
+              <div>
+                <span className="font-semibold text-white">Or Download Desktop Shortcut Directly:</span>
+                <p className="mt-0.5 text-white/60 text-[0.75rem]">
+                  Click the button below to download a 1-click desktop shortcut that will open LifeOS directly anytime from your desktop or taskbar.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Android Tab */}
+        {platformTab === "android" && (
+          <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-[0.8rem]">
+            <div className="flex items-start gap-3">
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-violet-500/20 text-xs font-bold text-violet-300">
+                1
+              </span>
+              <div>
+                <span className="font-semibold text-white">Open in Chrome or Samsung Internet:</span>
+                <p className="mt-0.5 text-white/60 text-[0.75rem]">
+                  Make sure you are viewing this page in Google Chrome or Samsung Internet browser.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-violet-500/20 text-xs font-bold text-violet-300">
+                2
+              </span>
+              <div>
+                <span className="font-semibold text-white">Tap the 3-Dots Menu (⋮):</span>
+                <p className="mt-0.5 text-white/60 text-[0.75rem]">
+                  Tap the <strong className="text-white">⋮</strong> menu in the upper-right corner of Chrome.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-violet-500/20 text-xs font-bold text-violet-300">
+                3
+              </span>
+              <div>
+                <span className="font-semibold text-white">Tap &quot;Install app&quot; or &quot;Add to Home screen&quot;:</span>
+                <p className="mt-0.5 text-white/60 text-[0.75rem]">
+                  LifeOS will install to your app drawer and home screen just like a native app from the Play Store!
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* iOS Tab */}
+        {platformTab === "ios" && (
+          <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-[0.8rem]">
+            <div className="flex items-start gap-3">
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-violet-500/20 text-xs font-bold text-violet-300">
+                1
+              </span>
+              <div>
+                <span className="font-semibold text-white">Open in Safari:</span>
+                <p className="mt-0.5 text-white/60 text-[0.75rem]">
+                  On iOS, Apple requires opening the app in <strong className="text-white">Safari</strong> to install.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-violet-500/20 text-xs font-bold text-violet-300">
+                2
+              </span>
+              <div>
+                <span className="font-semibold text-white">Tap the Share Button:</span>
+                <p className="mt-0.5 text-white/60 text-[0.75rem]">
+                  Tap the <Share2 className="inline h-3.5 w-3.5 text-sky-400 mx-1" /> Share button in the bottom toolbar of Safari.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-violet-500/20 text-xs font-bold text-violet-300">
+                3
+              </span>
+              <div>
+                <span className="font-semibold text-white">Tap &quot;Add to Home Screen&quot;:</span>
+                <p className="mt-0.5 text-white/60 text-[0.75rem]">
+                  Scroll down the share sheet, tap <strong className="text-white">&quot;Add to Home Screen&quot;</strong>, then tap <strong className="text-white">&quot;Add&quot;</strong>.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Copy Link Row */}
+        <div className="flex items-center justify-between rounded-xl border border-white/10 bg-black/40 px-3.5 py-2.5">
+          <span className="text-[0.72rem] text-white/50 truncate max-w-[220px] sm:max-w-[300px]">
+            {typeof window !== "undefined" ? window.location.origin : "https://your-lifeos-app.vercel.app"}
+          </span>
+          <button
+            onClick={copyLink}
+            className="flex items-center gap-1.5 text-[0.72rem] font-semibold text-violet-300 hover:text-violet-200 transition"
+          >
+            <Copy className="h-3.5 w-3.5" />
+            {copied ? "Copied!" : "Copy Link"}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+/**
+ * Compact Install trigger for Sidebar
+ */
+export function SidebarInstallButton() {
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const standaloneQuery = window.matchMedia("(display-mode: standalone)");
+    setIsStandalone(
+      standaloneQuery.matches ||
+        (window.navigator as unknown as { standalone?: boolean }).standalone === true,
+    );
+
+    const onOpen = () => setModalOpen(true);
+    window.addEventListener("lifeos-open-install", onOpen);
+    return () => window.removeEventListener("lifeos-open-install", onOpen);
+  }, []);
+
+  if (isStandalone) return null;
+
+  async function handleClick() {
+    if (window.__pwaInstallPrompt) {
+      try {
+        await window.__pwaInstallPrompt.prompt();
+        const choice = await window.__pwaInstallPrompt.userChoice;
+        if (choice.outcome === "accepted") {
+          window.dispatchEvent(new CustomEvent("pwa-installed"));
+        }
+        window.__pwaInstallPrompt = null;
+        return;
+      } catch {
+        // Fall back to modal
+      }
+    }
+    setModalOpen(true);
+  }
+
+  return (
+    <>
+      <button
+        onClick={() => void handleClick()}
+        className="group flex w-full items-center gap-2.5 rounded-xl border border-violet-500/30 bg-violet-600/15 px-3 py-2 text-[0.78rem] font-medium text-violet-200 transition-all hover:bg-violet-600/25 hover:border-violet-500/50"
+      >
+        <Download className="h-4 w-4 text-violet-300 transition-transform group-hover:-translate-y-0.5" />
+        <span>Install LifeOS App</span>
+        <span className="ml-auto rounded-md bg-violet-500/25 px-1.5 py-0.5 text-[0.6rem] font-bold text-violet-300">
+          PWA
+        </span>
+      </button>
+
+      <InstallModal open={modalOpen} onClose={() => setModalOpen(false)} />
+    </>
+  );
+}
+
+/**
+ * Rich PWA Install & Download Card for Settings
+ */
 export function PwaInstallCard() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isStandalone, setIsStandalone] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
   const [installed, setInstalled] = useState(false);
-  const [showIOSGuide, setShowIOSGuide] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
-    // Already running as installed PWA?
+    if (typeof window === "undefined") return;
+
+    // Already running as standalone?
     const standaloneQuery = window.matchMedia("(display-mode: standalone)");
     const isStandaloneNow =
       standaloneQuery.matches ||
       (window.navigator as unknown as { standalone?: boolean }).standalone === true;
     setIsStandalone(isStandaloneNow);
 
-    // Detect iOS
-    const ua = window.navigator.userAgent.toLowerCase();
-    setIsIOS(/iphone|ipad|ipod/.test(ua));
-
-    // ── Pick up the globally-stashed prompt (captured in PwaRegister) ──
+    // Pick up globally stashed prompt
     if (window.__pwaInstallPrompt) {
       setDeferredPrompt(window.__pwaInstallPrompt);
     }
 
-    // If PwaRegister captures it *after* this component mounts
     const onPromptReady = () => {
       if (window.__pwaInstallPrompt) {
         setDeferredPrompt(window.__pwaInstallPrompt);
@@ -37,30 +383,40 @@ export function PwaInstallCard() {
       setInstalled(true);
       setDeferredPrompt(null);
     };
+    const onOpen = () => setModalOpen(true);
 
     window.addEventListener("pwa-prompt-ready", onPromptReady);
     window.addEventListener("pwa-installed", onInstalled);
     window.addEventListener("appinstalled", onInstalled);
+    window.addEventListener("lifeos-open-install", onOpen);
 
     return () => {
       window.removeEventListener("pwa-prompt-ready", onPromptReady);
       window.removeEventListener("pwa-installed", onInstalled);
       window.removeEventListener("appinstalled", onInstalled);
+      window.removeEventListener("lifeos-open-install", onOpen);
     };
   }, []);
 
   async function handleInstallClick() {
-    if (!deferredPrompt) return;
-    await deferredPrompt.prompt();
-    const choice = await deferredPrompt.userChoice;
-    if (choice.outcome === "accepted") {
-      setInstalled(true);
+    if (deferredPrompt) {
+      try {
+        await deferredPrompt.prompt();
+        const choice = await deferredPrompt.userChoice;
+        if (choice.outcome === "accepted") {
+          setInstalled(true);
+        }
+        setDeferredPrompt(null);
+        window.__pwaInstallPrompt = null;
+        return;
+      } catch {
+        // Fall back to modal
+      }
     }
-    setDeferredPrompt(null);
-    window.__pwaInstallPrompt = null;
+    setModalOpen(true);
   }
 
-  // ── Already installed ────────────────────────────────────────
+  // If already installed
   if (isStandalone || installed) {
     return (
       <div className="flex items-center gap-3.5 rounded-2xl border border-emerald-500/30 bg-[linear-gradient(135deg,rgba(16,60,50,0.45),rgba(10,14,20,0.9))] p-4 shadow-lg">
@@ -72,114 +428,63 @@ export function PwaInstallCard() {
             LifeOS App Installed ✓
           </div>
           <div className="mt-0.5 text-[0.72rem] text-white/50">
-            Running as a native standalone Progressive Web App.
+            Running as a standalone native Progressive Web App.
           </div>
         </div>
       </div>
     );
   }
 
-  // ── Install Card ─────────────────────────────────────────────
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-violet-400/25 bg-[linear-gradient(135deg,rgba(40,20,85,0.7),rgba(15,10,28,0.92))] p-4 sm:p-5 shadow-[0_12px_40px_rgba(0,0,0,0.5)]">
-      {/* Ambient glow */}
-      <div className="pointer-events-none absolute -right-12 -top-16 h-44 w-44 rounded-full bg-violet-500/20 blur-3xl" />
-      <div className="pointer-events-none absolute -left-8 bottom-0 h-32 w-32 rounded-full bg-fuchsia-500/15 blur-3xl" />
+    <>
+      <div className="relative overflow-hidden rounded-3xl border border-violet-400/25 bg-[linear-gradient(135deg,rgba(40,20,85,0.7),rgba(15,10,28,0.92))] p-4 sm:p-5 shadow-[0_12px_40px_rgba(0,0,0,0.5)]">
+        {/* Ambient glow */}
+        <div className="pointer-events-none absolute -right-12 -top-16 h-44 w-44 rounded-full bg-violet-500/20 blur-3xl" />
+        <div className="pointer-events-none absolute -left-8 bottom-0 h-32 w-32 rounded-full bg-fuchsia-500/15 blur-3xl" />
 
-      <div className="relative flex flex-col gap-4">
-        {/* Header */}
-        <div className="flex items-start gap-3.5">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-violet-300/30 bg-violet-600/30 text-violet-200 shadow-[0_0_20px_rgba(139,92,246,0.5)]">
-            <Smartphone className="h-5 w-5" />
-          </span>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-display text-[1rem] font-bold text-white">
-                Install LifeOS App
-              </span>
-              <span className="rounded-full bg-violet-500/25 border border-violet-400/30 px-2 py-0.5 text-[0.6rem] font-semibold text-violet-200 uppercase tracking-wider">
-                PWA
-              </span>
-            </div>
-            <p className="mt-1 text-[0.78rem] text-white/55 leading-relaxed">
-              Add LifeOS to your home screen for instant launch, fullscreen mode, and offline access — no app store needed.
-            </p>
-          </div>
-        </div>
-
-        {/* ── Native install button (Chrome/Edge/Samsung on HTTPS or localhost) ── */}
-        {deferredPrompt && (
-          <button
-            onClick={() => void handleInstallClick()}
-            className="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-600 px-5 py-3 text-[0.88rem] font-bold text-white shadow-[0_0_24px_rgba(124,92,255,0.6)] transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_0_32px_rgba(124,92,255,0.8)] active:scale-95"
-          >
-            <Download className="h-5 w-5" />
-            Install LifeOS Now
-          </button>
-        )}
-
-        {/* ── iOS Safari instructions ── */}
-        {!deferredPrompt && isIOS && (
-          <div className="space-y-3">
-            <button
-              onClick={() => setShowIOSGuide(!showIOSGuide)}
-              className="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-600 px-5 py-3 text-[0.88rem] font-bold text-white shadow-[0_0_24px_rgba(124,92,255,0.6)] transition-all duration-200 hover:scale-[1.02] active:scale-95"
-            >
-              <Download className="h-5 w-5" />
-              How to Install on iPhone
-            </button>
-
-            {showIOSGuide && (
-              <div className="space-y-2.5 rounded-2xl border border-white/10 bg-white/[0.04] p-4 animate-rise">
-                <p className="text-[0.72rem] font-semibold text-white/80 uppercase tracking-wider">Follow these steps:</p>
-                <div className="flex items-center gap-3">
-                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-violet-500/20 text-[0.72rem] font-bold text-violet-200">1</span>
-                  <span className="text-[0.8rem] text-white/75">Tap the <Share2 className="inline h-4 w-4 text-sky-300 mx-0.5 -mt-0.5" /> <strong className="text-white">Share</strong> button in Safari&apos;s toolbar</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-violet-500/20 text-[0.72rem] font-bold text-violet-200">2</span>
-                  <span className="text-[0.8rem] text-white/75">Scroll down and tap <strong className="text-white">&quot;Add to Home Screen&quot;</strong></span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-violet-500/20 text-[0.72rem] font-bold text-violet-200">3</span>
-                  <span className="text-[0.8rem] text-white/75">Tap <strong className="text-white">&quot;Add&quot;</strong> — LifeOS appears on your home screen!</span>
-                </div>
+        <div className="relative flex flex-col gap-4">
+          {/* Header */}
+          <div className="flex items-start gap-3.5">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-violet-300/30 bg-violet-600/30 text-violet-200 shadow-[0_0_20px_rgba(139,92,246,0.5)]">
+              <Smartphone className="h-5 w-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-display text-[1rem] font-bold text-white">
+                  Install LifeOS App
+                </span>
+                <span className="rounded-full bg-violet-500/25 border border-violet-400/30 px-2 py-0.5 text-[0.6rem] font-semibold text-violet-200 uppercase tracking-wider">
+                  PWA & Desktop
+                </span>
               </div>
-            )}
-          </div>
-        )}
-
-        {/* ── Desktop / Android fallback (no beforeinstallprompt yet) ── */}
-        {!deferredPrompt && !isIOS && (
-          <div className="space-y-3">
-            <div className="flex w-full items-center justify-center gap-2.5 rounded-2xl border border-violet-400/30 bg-violet-500/10 px-5 py-3 text-[0.84rem] font-semibold text-violet-200">
-              <Download className="h-5 w-5" />
-              Install from Your Browser
-            </div>
-
-            <div className="space-y-2 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-              <p className="text-[0.72rem] font-semibold text-white/80 uppercase tracking-wider">How to install:</p>
-              <div className="flex items-start gap-3">
-                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-violet-500/20 text-[0.68rem] font-bold text-violet-200 mt-0.5">1</span>
-                <div>
-                  <span className="text-[0.8rem] text-white/80 font-medium">Chrome / Edge</span>
-                  <p className="text-[0.72rem] text-white/50 mt-0.5">Click the <strong className="text-white/80">install icon</strong> (⊕) in the address bar, or go to <strong className="text-white/80">⋮ → Install LifeOS</strong></p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-violet-500/20 text-[0.68rem] font-bold text-violet-200 mt-0.5">2</span>
-                <div>
-                  <span className="text-[0.8rem] text-white/80 font-medium">Android Chrome</span>
-                  <p className="text-[0.72rem] text-white/50 mt-0.5">Tap <strong className="text-white/80">⋮ → Add to Home screen</strong> or look for the install banner</p>
-                </div>
-              </div>
-              <p className="mt-2 text-[0.68rem] text-white/35 italic">
-                Note: On localhost the native install button may not appear. Deploy to Vercel (HTTPS) for the full &quot;Install App Now&quot; experience.
+              <p className="mt-1 text-[0.78rem] text-white/60 leading-relaxed">
+                Add LifeOS to your home screen or desktop for fullscreen view, instant offline launch, and native experience.
               </p>
             </div>
           </div>
-        )}
+
+          {/* Action buttons */}
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            <button
+              onClick={() => void handleInstallClick()}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-600 px-4 py-3 text-[0.88rem] font-bold text-white shadow-[0_0_24px_rgba(124,92,255,0.5)] transition-all duration-200 hover:scale-[1.01] hover:shadow-[0_0_32px_rgba(124,92,255,0.7)] active:scale-95"
+            >
+              <Download className="h-4 w-4" />
+              {deferredPrompt ? "Install App Now" : "Download & Install App"}
+            </button>
+
+            <button
+              onClick={downloadDesktopShortcut}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-violet-400/35 bg-white/[0.06] px-4 py-3 text-[0.85rem] font-semibold text-violet-100 transition-all duration-200 hover:bg-white/[0.1] active:scale-95"
+            >
+              <Laptop className="h-4 w-4 text-violet-300" />
+              Download Desktop Launcher (.url)
+            </button>
+          </div>
+        </div>
       </div>
-    </div>
+
+      <InstallModal open={modalOpen} onClose={() => setModalOpen(false)} />
+    </>
   );
 }

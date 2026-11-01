@@ -4,6 +4,7 @@ import { saveBrief } from "@/lib/calendar/service";
 import { briefDateKey, buildWeeklyReview, currentWeekStart, proposeNextWeek } from "@/lib/briefs";
 import { serviceUserFromRow } from "@/lib/account";
 import { utcToZoned } from "@/lib/time";
+import { createSystemNotification } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -71,16 +72,14 @@ export async function GET(request: Request) {
       await saveBrief(row.id, "review", dateKey, review.headline, { review, proposals });
 
       // Create notification so user gets notified on Sunday evening
-      await prisma.notification.create({
-        data: {
-          userId: row.id,
-          type: "review",
-          title: "Sunday Review is Ready 🌟",
-          message: review.headline,
-          link: "/review",
-          metadata: { forDate: dateKey },
-        },
-      }).catch(() => {});
+      await createSystemNotification({
+        userId: row.id,
+        type: "review",
+        title: "Sunday Review is Ready 🌟",
+        message: review.headline,
+        link: "/review",
+        metadata: { forDate: dateKey },
+      });
 
       written += 1;
     } catch (error) {

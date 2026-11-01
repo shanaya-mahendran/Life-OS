@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { saveBrief } from "@/lib/calendar/service";
 import { briefDateKey, buildMorningBrief } from "@/lib/briefs";
 import { serviceUserFromRow } from "@/lib/account";
+import { createSystemNotification } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -55,16 +56,14 @@ export async function GET(request: Request) {
       await saveBrief(row.id, "morning", dateKey, brief.headline, brief);
 
       // Create notification so user sees it in their notification feed upon waking up
-      await prisma.notification.create({
-        data: {
-          userId: row.id,
-          type: "morning_brief",
-          title: "Morning Brief is Ready ☀️",
-          message: brief.headline,
-          link: "/today",
-          metadata: { forDate: dateKey },
-        },
-      }).catch(() => {});
+      await createSystemNotification({
+        userId: row.id,
+        type: "morning_brief",
+        title: "Morning Brief is Ready ☀️",
+        message: brief.headline,
+        link: "/today",
+        metadata: { forDate: dateKey },
+      });
 
       results.push({ userId: row.id, headline: brief.headline });
     } catch (error) {

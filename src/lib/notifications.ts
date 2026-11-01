@@ -12,10 +12,33 @@
 import { prisma } from "@/lib/db";
 import { formatInZone } from "@/lib/time";
 
+const dbNotification = (prisma as any).notification;
+
 export interface EventNotificationResult {
   before30mCount: number;
   before15mCount: number;
   after15mCount: number;
+}
+
+/**
+ * Safely creates a notification without throwing or breaking if table/client is rebuilding.
+ */
+export async function createSystemNotification(data: {
+  userId: string;
+  type: string;
+  title: string;
+  message: string;
+  link?: string;
+  metadata?: Record<string, unknown>;
+  eventId?: string;
+}): Promise<void> {
+  try {
+    await dbNotification.create({
+      data,
+    });
+  } catch (error) {
+    console.warn("[lifeos] createSystemNotification suppressed:", error);
+  }
 }
 
 function clock(date: Date, timeZone: string): string {
@@ -61,7 +84,7 @@ export async function generateEventNotifications(now: Date = new Date()): Promis
 
   for (const event of events30m) {
     try {
-      await prisma.notification.upsert({
+      await dbNotification.upsert({
         where: {
           userId_eventId_type: {
             userId: event.userId,
@@ -105,7 +128,7 @@ export async function generateEventNotifications(now: Date = new Date()): Promis
 
   for (const event of events15m) {
     try {
-      await prisma.notification.upsert({
+      await dbNotification.upsert({
         where: {
           userId_eventId_type: {
             userId: event.userId,
@@ -150,7 +173,7 @@ export async function generateEventNotifications(now: Date = new Date()): Promis
 
   for (const event of eventsFinished) {
     try {
-      await prisma.notification.upsert({
+      await dbNotification.upsert({
         where: {
           userId_eventId_type: {
             userId: event.userId,
@@ -192,7 +215,7 @@ export async function confirmPlanAchievement(
   notificationId: string,
   achieved: boolean,
 ): Promise<{ ok: boolean; status: string; message: string }> {
-  const notification = await prisma.notification.findFirst({
+  const notification = await dbNotification.findFirst({
     where: { id: notificationId, userId },
   });
 
@@ -202,7 +225,7 @@ export async function confirmPlanAchievement(
 
   const newStatus = achieved ? "confirmed_achieved" : "confirmed_missed";
 
-  await prisma.notification.update({
+  await dbNotification.update({
     where: { id: notificationId },
     data: { status: newStatus },
   });

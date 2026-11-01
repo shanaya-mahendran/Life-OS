@@ -255,7 +255,7 @@ export async function seedStarterWeek(userId: string): Promise<void> {
 /** Clear all calendar, task, notification, memory, and brief data (completely clean slate). */
 export async function clearCalendarData(userId: string): Promise<void> {
   await prisma.$transaction([
-    prisma.notification.deleteMany({ where: { userId } }),
+    (prisma as any).notification.deleteMany({ where: { userId } }),
     prisma.event.deleteMany({ where: { userId } }),
     prisma.task.deleteMany({ where: { userId } }),
     prisma.memory.deleteMany({ where: { userId } }),

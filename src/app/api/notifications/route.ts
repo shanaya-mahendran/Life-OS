@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { requireProfile } from "@/lib/auth";
 import { confirmPlanAchievement, generateEventNotifications } from "@/lib/notifications";
 
+const dbNotification = (prisma as any).notification;
+
 export const dynamic = "force-dynamic";
 
 /** GET /api/notifications - List user notifications & count */
@@ -14,12 +16,12 @@ export async function GET() {
     await generateEventNotifications().catch(() => {});
 
     const [notifications, unreadCount] = await Promise.all([
-      prisma.notification.findMany({
+      dbNotification.findMany({
         where: { userId: profile.id },
         orderBy: { createdAt: "desc" },
         take: 40,
       }),
-      prisma.notification.count({
+      dbNotification.count({
         where: { userId: profile.id, status: "unread" },
       }),
     ]);
@@ -38,7 +40,7 @@ export async function PATCH(request: Request) {
     const { id, all } = body;
 
     if (all) {
-      await prisma.notification.updateMany({
+      await dbNotification.updateMany({
         where: { userId: profile.id, status: "unread" },
         data: { status: "read" },
       });
@@ -46,7 +48,7 @@ export async function PATCH(request: Request) {
     }
 
     if (id) {
-      await prisma.notification.updateMany({
+      await dbNotification.updateMany({
         where: { id, userId: profile.id, status: "unread" },
         data: { status: "read" },
       });
