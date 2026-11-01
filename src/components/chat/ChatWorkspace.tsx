@@ -210,7 +210,9 @@ export function ChatWorkspace({
               <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#0d0920] bg-emerald-400" />
             </span>
             <div className="min-w-0">
-              <h2 className="font-display text-[0.95rem] font-semibold text-white">LifeOS Agent</h2>
+              <h2 className="font-display text-[0.95rem] font-semibold text-white">
+                Mochi <span className="text-[0.7rem] font-medium text-violet-300 ml-1">· AI Wingman</span>
+              </h2>
               <p className="text-[0.66rem] text-white/40">
                 {engine === "deepseek" ? `Online · ${model}` : "Online · rules engine (no API key needed)"}
               </p>
@@ -230,13 +232,13 @@ export function ChatWorkspace({
             {empty && (
               <div className="mx-auto max-w-md py-8 text-center">
                 <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-violet-400/25 bg-violet-500/15 text-violet-200">
-                  <Wand2 className="h-5 w-5" />
+                  <Sparkles className="h-5 w-5 text-violet-300" />
                 </span>
                 <h3 className="mt-3 font-display text-[1.05rem] font-semibold text-white">
-                  Hey {userName.split(" ")[0]} — what should move?
+                  Hey {userName.split(" ")[0]}, I&apos;m Mochi! 👋
                 </h3>
-                <p className="mt-1 text-[0.78rem] leading-relaxed text-white/45">
-                  Ask in plain language. Every change is checked for conflicts, protected time and can be undone.
+                <p className="mt-1 text-[0.78rem] leading-relaxed text-white/55">
+                  Plan your day, reschedule the chaos, or just chat, vent, and joke around. I&apos;ve got your back across all 18 life domains.
                 </p>
               </div>
             )}
@@ -293,8 +295,8 @@ export function ChatWorkspace({
                     )}
 
                     {!isUser && message.engine && (
-                      <div className="mt-1 text-[0.58rem] uppercase tracking-[0.14em] text-white/20">
-                        {message.engine === "deepseek" ? "deepseek-chat" : "rules engine"}
+                      <div className="mt-1 text-[0.58rem] uppercase tracking-[0.14em] text-white/30">
+                        Mochi · {message.engine === "deepseek" ? "deepseek-chat" : "rules engine"}
                       </div>
                     )}
                   </div>
@@ -357,7 +359,7 @@ export function ChatWorkspace({
                   }
                 }}
                 rows={1}
-                placeholder="Ask LifeOS anything — “move karate to 7 PM today”…"
+                placeholder="Talk to Mochi — plan your day, reschedule, or just chat…"
                 className="max-h-28 min-h-[2.1rem] flex-1 resize-none bg-transparent px-2 py-1.5 text-[16px] sm:text-[0.84rem] text-white outline-none placeholder:text-white/30"
               />
               <button
@@ -377,7 +379,7 @@ export function ChatWorkspace({
 
         <aside className="hidden space-y-3 xl:block">
           <section className="surface p-3.5">
-            <div className="label mb-2">Agent engine</div>
+            <div className="label mb-2">Mochi engine</div>
             <div className="flex items-center gap-2">
               <span
                 className="grid h-8 w-8 place-items-center rounded-lg"

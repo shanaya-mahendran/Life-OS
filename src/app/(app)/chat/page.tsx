@@ -11,11 +11,12 @@ export const metadata = { title: "Chat · LifeOS" };
 export const dynamic = "force-dynamic";
 
 const QUICK_PROMPTS = [
+  "Hey Mochi, how does my day look?",
+  "Roast my schedule today",
   "Move karate to 7 PM today",
-  "Block 2 hours for the pitch tomorrow",
-  "What's on Thursday?",
-  "Plan revision for my exam in 10 days",
+  "Block 2 hours for deep work tomorrow",
   "Find 2 hours free tomorrow for studying",
+  "Tell me a joke to wake me up",
 ];
 
 interface StoredResult {
@@ -73,8 +74,8 @@ export default async function ChatPage() {
     <div className="space-y-4">
       <PageBanner
         icon={<MessageSquare className="h-5 w-5" />}
-        title="Chat"
-        subtitle="One conversation for all 18 domains — validated, protected and undoable."
+        title="Mochi"
+        subtitle="Your sharp, witty AI companion — schedule all 18 domains or just chat, vent & brainstorm."
         aside={
           <div className="hidden rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-right sm:block">
             <p className="text-[0.66rem] text-white/45">

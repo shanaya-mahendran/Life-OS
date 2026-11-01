@@ -3,7 +3,7 @@ import { CalendarDays, House, LayoutGrid, MessageSquare, Settings, ChartColumn, 
 export const NAV_ITEMS = [
   { href: "/today", label: "Today", icon: House },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
-  { href: "/chat", label: "Chat", icon: MessageSquare },
+  { href: "/chat", label: "Mochi", icon: Sparkles },
   { href: "/domains", label: "Domains", icon: LayoutGrid },
   { href: "/review", label: "Weekly Review", icon: ChartColumn },
   { href: "/settings", label: "Settings", icon: Settings },
@@ -12,7 +12,7 @@ export const NAV_ITEMS = [
 export const MOBILE_NAV = [
   { href: "/today", label: "Home", icon: House },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
-  { href: "/chat", label: "Chat", icon: Sparkles },
+  { href: "/chat", label: "Mochi", icon: Sparkles },
   { href: "/domains", label: "Domains", icon: LayoutGrid },
   { href: "/settings", label: "Settings", icon: Settings },
 ] as const;

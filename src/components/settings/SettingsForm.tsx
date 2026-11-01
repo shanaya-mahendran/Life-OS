@@ -289,16 +289,15 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
               <Sparkles className="h-4 w-4" />
             </span>
             <div>
-              <h3 className="text-[0.85rem] font-semibold text-white">Agent</h3>
-              <p className="text-[0.62rem] text-white/35">DeepSeek, server-side only</p>
+              <h3 className="text-[0.85rem] font-semibold text-white">Mochi (AI Companion)</h3>
+              <p className="text-[0.62rem] text-white/35">Witty, intelligent male companion · DeepSeek powered</p>
             </div>
           </div>
           <p className="mt-2.5 text-[0.72rem] leading-relaxed text-white/45">
-            The API key lives in the server environment and is never sent to the browser. Without a key the chat uses
-            the built-in rules engine — same tools, same conflicts, no cost.
+            Mochi handles master calendar scheduling across all 18 life domains, semantic recall, or just friendly, playful banter when you want to chat.
           </p>
           <Link href="/chat" className="btn btn-ghost mt-2.5 w-full justify-center text-[0.72rem]">
-            Open chat →
+            Chat with Mochi →
           </Link>
         </section>
 

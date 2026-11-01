@@ -102,7 +102,7 @@ function changeOf(
 }
 
 const HELP_REPLY =
-  "I can move, cancel, create and find time for anything across your 18 domains. Try “move karate to 7 PM today”, “block 2 hours for the pitch tomorrow”, “what's on Thursday?” or “plan revision for my exam in 10 days”.";
+  "I'm Mochi — I can schedule, move, cancel, and find time across all 18 of your domains, or we can just chat! Try “move karate to 7 PM today”, “what's on Thursday?”, or “how are you, Mochi?”.";
 
 /* -------------------------------------------------------------------------- */
 /* Handlers                                                                    */
@@ -468,6 +468,27 @@ async function handlePlan(ctx: AgentContext, message: string): Promise<RuleOutco
   };
 }
 
+function handleChitChat(ctx: AgentContext, message: string): RuleOutcome {
+  const lower = message.toLowerCase();
+  const name = (ctx.user as any).name?.split(" ")[0] || "my friend";
+
+  let reply = `Hey ${name}! I'm Mochi — your friendly, slightly sarcastic AI buddy. Always here to keep your schedule from catching fire, or just hang out and chat. What's on your mind?`;
+
+  if (/who are you|what is your name|whats your name/i.test(lower)) {
+    reply = `I'm Mochi! Your AI wingman, productivity orchestrator, and designated friend to keep you on track across all 18 domains. Ready to plan something, or just shooting the breeze?`;
+  } else if (/are you (a man|male|guy)/i.test(lower)) {
+    reply = `Yup, I'm Mochi — think of me as your whip-smart guy best friend who keeps you from procrastinating and helps you win.`;
+  } else if (/how are you|how's it going|what's up|whats up/i.test(lower)) {
+    reply = `Doing great! Just keeping an eye on your calendar so you don't accidentally schedule 14 hours of meetings. How are you doing today, ${name}?`;
+  } else if (/roast (me|my schedule)/i.test(lower)) {
+    reply = `Let's see... ambitious plans, 18 life domains, and a strong tendency to think you have 36 hours in a day. Need me to rescue your schedule before it implodes? 😉`;
+  } else if (/joke/i.test(lower)) {
+    reply = `Why did the calendar go to therapy? Because its days were numbered. 🥁 Now tell me, do you have an actual event to schedule or are we just clowning around?`;
+  }
+
+  return emptyOutcome("chit_chat", reply);
+}
+
 /* -------------------------------------------------------------------------- */
 /* Entry point                                                                 */
 /* -------------------------------------------------------------------------- */
@@ -476,6 +497,8 @@ export async function runRules(ctx: AgentContext, message: string): Promise<Rule
   const intent = detectIntent(message);
 
   switch (intent) {
+    case "chit_chat":
+      return handleChitChat(ctx, message);
     case "undo": {
       const result = await undoLastAction(ctx.userId);
       return {

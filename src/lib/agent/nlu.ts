@@ -21,6 +21,7 @@ export type IntentKind =
   | "complete"
   | "plan"
   | "undo"
+  | "chit_chat"
   | "unknown";
 
 export interface ParsedWhen {
@@ -533,6 +534,12 @@ export function detectIntent(text: string): IntentKind {
   if (/\b(task|todo|to-do|remind me|add .* task|need to)\b/.test(lower)) return "task";
   if (/\b(what|whats|what's|show|list|do i have|am i|schedule|when is|how busy)\b/.test(lower)) return "query";
   if (/\b(block|add|book|schedule|create|put|reserve|set up|slot)\b/.test(lower)) return "create";
+  if (
+    /^(hi|hey|hello|yo|sup|hiya|howdy|good morning|good evening|good afternoon)\b/i.test(lower) ||
+    /\b(who are you|what is your name|whats your name|tell me a joke|roast me|how are you|what's up|whats up|how's it going|mochi)\b/i.test(lower)
+  ) {
+    return "chit_chat";
+  }
   return "unknown";
 }
 
