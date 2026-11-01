@@ -48,7 +48,7 @@ Add the following environment variables under **Settings → Environment Variabl
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase Project URL | `https://xkosypxxmdxwcssnrelr.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Anon Public Key | From Supabase → Project Settings → API |
-| `DATABASE_URL` | Postgres pooler connection string | `postgresql://postgres.<project-ref>:<encoded-password>@aws-1-eu-central-1.pooler.supabase.com:5432/postgres` |
+| `DATABASE_URL` | Postgres pooler connection string | `postgresql://postgres.<project-ref>:<encoded-password>@aws-1-eu-central-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=10&pool_timeout=20` |
 | `DIRECT_URL` | Direct Postgres connection string | `postgresql://postgres.<project-ref>:<encoded-password>@aws-1-eu-central-1.pooler.supabase.com:5432/postgres` |
 | `NEXT_PUBLIC_APP_URL` | Production URL of your app | `https://your-project.vercel.app` |
 | `DEEPSEEK_API_KEY` | DeepSeek API Key | `sk-...` (server-side only) |
