@@ -225,7 +225,7 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
             </label>
 
             <label className="block space-y-1.5 sm:col-span-2">
-              <span className="label">Monthly DeepSeek token budget</span>
+              <span className="label">Monthly AI token budget</span>
               <input
                 type="number"
                 min={0}
@@ -290,7 +290,7 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
             </span>
             <div>
               <h3 className="text-[0.85rem] font-semibold text-white">Mochi (AI Companion)</h3>
-              <p className="text-[0.62rem] text-white/35">Witty, intelligent male companion · DeepSeek powered</p>
+              <p className="text-[0.62rem] text-white/35">Witty, intelligent male companion · Groq powered</p>
             </div>
           </div>
           <p className="mt-2.5 text-[0.72rem] leading-relaxed text-white/45">

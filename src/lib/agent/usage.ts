@@ -1,7 +1,7 @@
 /**
  * Cost and abuse guards for the chat endpoint.
  *
- * - A per-user sliding window stops a stuck client from hammering DeepSeek.
+ * - A per-user sliding window stops a stuck client from hammering the AI model.
  * - A monthly token budget (per account, editable in Settings) keeps spend
  *   predictable. When the budget is spent the agent keeps answering with the
  *   rules engine instead of failing.

@@ -384,7 +384,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
   } catch (error) {
     // The model, the network or the provider can fail. The rules engine keeps
     // chat working; the failure is visible in the server log only.
-    console.error("[lifeos] DeepSeek call failed, using rules engine:", error);
+    console.error("[lifeos] AI model call failed, using rules engine:", error);
 
     const fallback = await guardedRules(ctx, input.message);
     const logId = await persist(input, {

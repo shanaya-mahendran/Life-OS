@@ -21,8 +21,8 @@ const VARS = [
     hint: "Direct connection string (port 5432) used for migrations",
   },
   {
-    key: "DEEPSEEK_API_KEY",
-    hint: "platform.deepseek.com → API keys (server-side only)",
+    key: "GROQ_API_KEY",
+    hint: "console.groq.com/keys → API keys (server-side only)",
   },
 ];
 
@@ -82,7 +82,7 @@ npm run dev`}
 
         <p className="mt-5 text-[0.72rem] leading-relaxed text-white/35">
           Secrets never reach the browser: only the two <span className="font-mono">NEXT_PUBLIC_</span> Supabase
-          values are exposed, and the DeepSeek key is read exclusively inside server route handlers.
+          values are exposed, and the Groq API key is read exclusively inside server route handlers.
         </p>
       </div>
     </main>

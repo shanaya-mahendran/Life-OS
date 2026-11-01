@@ -332,7 +332,7 @@ export function ChatWorkspace({
 
                     {!isUser && message.engine && (
                       <div className="mt-1 text-[0.58rem] uppercase tracking-[0.14em] text-white/30">
-                        Mochi · {message.engine === "deepseek" ? "deepseek-chat" : "rules engine"}
+                        Mochi · {message.engine === "deepseek" ? (model || "Groq AI") : "rules engine"}
                       </div>
                     )}
                   </div>
@@ -428,7 +428,7 @@ export function ChatWorkspace({
               </span>
               <div>
                 <div className="text-[0.78rem] font-semibold text-white/85">
-                  {engine === "deepseek" ? "DeepSeek online" : "Rules engine"}
+                  {engine === "deepseek" ? "Groq AI online" : "Rules engine"}
                 </div>
                 <div className="text-[0.62rem] text-white/35">
                   {engine === "deepseek" ? model : "Deterministic, no API key"}

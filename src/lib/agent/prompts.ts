@@ -78,5 +78,6 @@ MEMORY (durable notes from past conversations)
 ${input.memories}${input.engineNote ? `\n\nNOTE\n${input.engineNote}` : ""}`;
 }
 
-export const DEEPSEEK_FAILURE_NOTE =
-  "The DeepSeek call failed. Use the rules engine for this turn, and tell the user their request was handled in offline mode.";
+export const AI_FAILURE_NOTE =
+  "The AI model call failed. Use the rules engine for this turn, and tell the user their request was handled in offline mode.";
+export const DEEPSEEK_FAILURE_NOTE = AI_FAILURE_NOTE;

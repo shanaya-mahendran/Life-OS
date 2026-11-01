@@ -2,7 +2,7 @@ import { MessageSquare } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { requireProfile } from "@/lib/auth";
 import { budgetStatus } from "@/lib/agent/usage";
-import { AGENT_MODEL, isDeepSeekConfigured } from "@/lib/agent/llm";
+import { AGENT_MODEL, isAIConfigured } from "@/lib/agent/llm";
 import { PageBanner } from "@/components/shell/PageBanner";
 import { ChatWorkspace, type ChatMessage } from "@/components/chat/ChatWorkspace";
 import type { ChatChange } from "@/components/chat/ChangeCard";
@@ -79,7 +79,7 @@ export default async function ChatPage() {
         aside={
           <div className="hidden rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-right sm:block">
             <p className="text-[0.66rem] text-white/45">
-              {isDeepSeekConfigured() ? AGENT_MODEL : "rules engine"} · {user.timezone.replace("_", " ")}
+              {isAIConfigured() ? AGENT_MODEL : "rules engine"} · {user.timezone.replace("_", " ")}
             </p>
             <p className="mt-0.5 text-[0.6rem] uppercase tracking-[0.16em] text-white/25">
               {logs.length} turns logged
@@ -92,7 +92,7 @@ export default async function ChatPage() {
         initialMessages={messages}
         timeZone={user.timezone}
         userName={profile.name ?? profile.email}
-        engine={isDeepSeekConfigured() ? "deepseek" : "rules"}
+        engine={isAIConfigured() ? "deepseek" : "rules"}
         model={AGENT_MODEL}
         usage={{ used: spend.used, budget: spend.budget }}
         quickPrompts={QUICK_PROMPTS}
