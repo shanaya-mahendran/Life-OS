@@ -15,7 +15,7 @@ import { prisma } from "@/lib/db";
 import { requireProfile } from "@/lib/auth";
 import { buildMorningBrief } from "@/lib/briefs";
 import { getDayOverview, getWeekStats, listEvents } from "@/lib/calendar/service";
-import { addZonedDays, formatInZone, humanizeMinutes, startOfWeekMonday, timeRangeLabel } from "@/lib/time";
+import { addZonedDays, formatInZone, humanizeMinutes, minutesBetween, startOfWeekMonday, timeRangeLabel } from "@/lib/time";
 import { withAlpha } from "@/lib/utils";
 import { DomainIcon } from "@/components/domain/DomainIcon";
 import { ProgressRing } from "@/components/today/ProgressRing";
@@ -207,6 +207,9 @@ export default async function TodayPage() {
                         {event.domainName}
                         <span className="text-white/20">·</span>
                         {timeRangeLabel(event.start, event.end, tz)}
+                        <span className="rounded bg-white/[0.08] px-1.5 py-0.5 text-[0.6rem] font-medium text-white/70">
+                          {humanizeMinutes(Math.round(minutesBetween(event.start, event.end)))}
+                        </span>
                       </div>
                     </div>
                   </li>

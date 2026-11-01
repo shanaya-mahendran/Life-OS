@@ -37,12 +37,20 @@ function formatRange(change: ChatChange, timeZone: string): string | null {
     timeZone,
   }).format(start);
   if (!change.end) return `${label} · ${time}`;
+  const end = new Date(change.end);
   const endTime = new Intl.DateTimeFormat("en-US", {
     hour: "numeric",
     minute: "2-digit",
     timeZone,
-  }).format(new Date(change.end));
-  return `${label} · ${time} – ${endTime}`;
+  }).format(end);
+  const duration = Math.max(1, Math.round((end.getTime() - start.getTime()) / 60000));
+  const durLabel =
+    duration < 60
+      ? `${duration}m`
+      : duration % 60 === 0
+        ? `${duration / 60}h`
+        : `${Math.floor(duration / 60)}h ${duration % 60}m`;
+  return `${label} · ${time} – ${endTime} (${durLabel})`;
 }
 
 interface ChangeCardProps {

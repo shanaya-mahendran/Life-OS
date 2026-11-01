@@ -31,6 +31,10 @@ export interface ParsedWhen {
   explicitDate: boolean;
   /** Local minutes since midnight, when a time was given. */
   minutes: number | null;
+  /** Duration in minutes if a time range (e.g. from 2pm to 3:30pm) was found */
+  durationMinutes?: number | null;
+  /** End timestamp if a time range was provided */
+  endDate?: Date | null;
 }
 
 const MONTHS: Record<string, number> = {
@@ -156,23 +160,182 @@ export function detectDomain(text: string): DomainSlug | null {
   return best?.slug ?? null;
 }
 
-/** "2 hours" → 120, "90 mins" → 90, "half an hour" → 30. */
+export interface TimeRangeRead {
+  startMinutes: number;
+  endMinutes: number;
+  durationMinutes: number;
+  consumed: string;
+}
+
+function parseClockNumber(raw: string, impliedMeridiem?: "am" | "pm"): number | null {
+  const match = raw.trim().toLowerCase().match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/);
+  if (!match) return null;
+  let hour = Number(match[1]);
+  const minute = Number(match[2] ?? 0);
+  const meridiem = match[3] ?? impliedMeridiem;
+
+  if (meridiem === "pm") {
+    if (hour < 12) hour += 12;
+  } else if (meridiem === "am") {
+    if (hour === 12) hour = 0;
+  } else {
+    if (hour <= 7) hour += 12;
+  }
+  return hour * 60 + minute;
+}
+
+/**
+ * Read time ranges from chat: "from 2pm to 3:30pm", "2pm - 4pm", "10am to 11:30am", "from 4 to 5:15 pm".
+ */
+export function parseTimeRange(text: string): TimeRangeRead | null {
+  const lower = normalise(text);
+  const rangeMatch = lower.match(
+    /(?:from|between\s+)?\b(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\s*(?:to|-|until|till|–|—|and)\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\b/,
+  );
+  if (!rangeMatch) return null;
+
+  const rawStart = rangeMatch[1].trim();
+  const rawEnd = rangeMatch[2].trim();
+
+  const endMeridiem = rawEnd.includes("pm") ? "pm" : rawEnd.includes("am") ? "am" : undefined;
+  const startMeridiem = rawStart.includes("pm") ? "pm" : rawStart.includes("am") ? "am" : undefined;
+
+  let startMin = parseClockNumber(rawStart, startMeridiem ?? endMeridiem);
+  const endMin = parseClockNumber(rawEnd, endMeridiem);
+
+  if (startMin === null || endMin === null) return null;
+
+  if (startMin >= endMin && !startMeridiem && endMeridiem === "pm") {
+    const retryStart = parseClockNumber(rawStart, "am");
+    if (retryStart !== null && retryStart < endMin) {
+      startMin = retryStart;
+    }
+  }
+
+  let duration = endMin - startMin;
+  if (duration <= 0) {
+    if (endMin + 1440 - startMin <= 720) {
+      duration = endMin + 1440 - startMin;
+    } else {
+      return null;
+    }
+  }
+
+  return {
+    startMinutes: startMin,
+    endMinutes: endMin,
+    durationMinutes: duration,
+    consumed: rangeMatch[0],
+  };
+}
+
+/** "2 hours" → 120, "90 mins" → 90, "half an hour" → 30, "from 2pm to 3:30pm" → 90. */
 export function parseDuration(text: string): number | null {
   const lower = normalise(text);
 
+  // 1. Explicit time range in chat (e.g. from 2pm to 3:30pm)
+  const range = parseTimeRange(lower);
+  if (range) return range.durationMinutes;
+
+  // 2. Hyphenated durations: "30-minute", "45-min", "2-hour", "90-minute"
+  const hyphenatedHours = lower.match(/\b(\d+(?:\.\d+)?)-(?:hours?|hrs?|h)\b/);
+  if (hyphenatedHours) return Math.round(Number(hyphenatedHours[1]) * 60);
+
+  const hyphenatedMins = lower.match(/\b(\d{1,3})-(?:minutes?|mins?|m)\b/);
+  if (hyphenatedMins) return Number(hyphenatedMins[1]);
+
+  // 3. Combined hours & minutes: "1 hour 30 mins", "1 hour and 15 minutes", "2h 30m"
+  const combined = lower.match(/\b(\d+)\s*(?:hours?|hrs?|h)\s*(?:and\s*)?(\d{1,2})\s*(?:minutes?|mins?|m)?\b/);
+  if (combined) return Number(combined[1]) * 60 + Number(combined[2]);
+
+  // 4. Hours: "2 hours", "1.5h", "2.5 hrs"
   const hours = lower.match(/(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)\b/);
   if (hours) return Math.round(Number(hours[1]) * 60);
 
+  // 5. Minutes: "45 minutes", "30 mins", "15m"
   const minutes = lower.match(/(\d{1,3})\s*(?:minutes?|mins?|m)\b/);
   if (minutes) return Number(minutes[1]);
 
+  // 6. Common phrases
   if (/\bhalf an hour\b|\bhalf hour\b/.test(lower)) return 30;
+  if (/\bquarter of an hour\b|\bquarter hour\b/.test(lower)) return 15;
+  if (/\ban hour and a half\b|\bone and a half hours?\b/.test(lower)) return 90;
   if (/\ban hour\b|\bone hour\b/.test(lower)) return 60;
 
   const worded = lower.match(/\b(an|a|one|two|three|four|five)\s+hours?\b/);
   if (worded) return (NUMBER_WORDS[worded[1]] ?? 1) * 60;
 
   return null;
+}
+
+/**
+ * Infer an event-specific duration in minutes based on chat keywords and domain.
+ * Avoids rigid one-size-fits-all defaults (e.g. 90 mins for everything).
+ */
+export function inferEventDuration(text: string, domainSlug?: string | null): number {
+  const explicit = parseDuration(text);
+  if (explicit !== null) return explicit;
+
+  const lower = normalise(text);
+
+  // 15-minute events: quick syncs, daily standups, meditation, check-ins
+  if (
+    /\b(standup|daily standup|quick sync|quick call|huddle|checkin|check-in|status update|meditation|breathe|stretch|stretch break)\b/.test(
+      lower,
+    )
+  ) {
+    return 15;
+  }
+
+  // 30-minute events: 1:1, catch-ups, coffee chats, quick phone calls, haircuts, errands, habits
+  if (
+    /\b(1:1|1-on-1|one on one|catchup|catch up|touch base|coffee|tea|quick chat|call|phone call|haircut|errand|admin|planning|review|inbox|habit|habits|journal|journaling|walk|stroll)\b/.test(
+      lower,
+    )
+  ) {
+    return 30;
+  }
+
+  // 45-minute events: meals, medical, consultation, light runs
+  if (
+    /\b(lunch|breakfast|dinner|meal|brunch|doctor|dentist|appointment|physio|therapy|consultation|hair|grooming|jog|run|jogging|swimming)\b/.test(
+      lower,
+    )
+  ) {
+    return 45;
+  }
+
+  // 120-minute (2 hour) events: exams, hackathons, tests, matches, movies
+  if (/\b(exam|final exam|midterm|test|hackathon|workshop|tournament|match|game|movie|concert)\b/.test(lower)) {
+    return 120;
+  }
+
+  // 90-minute events: deep study blocks, deep work, revision, practice projects
+  if (/\b(study block|study session|revision|deep work|focus block|hackathon prep|practice project|rehearsal|lab)\b/.test(lower)) {
+    return 90;
+  }
+
+  // 60-minute events: gym, workouts, karate, classes, lectures, meetings, interviews, coding
+  if (
+    /\b(gym|workout|karate|training|exercise|fitness|yoga|pilates|meeting|sync|interview|presentation|demo|class|lecture|lesson|tutorial|seminar|webinar|tutoring|coding|reading|research|blog draft|blogging)\b/.test(
+      lower,
+    )
+  ) {
+    return 60;
+  }
+
+  // Domain-specific defaults if keywords didn't match
+  if (domainSlug) {
+    const slug = domainSlug.toLowerCase();
+    if (slug === "health" || slug === "karate") return 60;
+    if (slug === "food") return 45;
+    if (slug === "admin" || slug === "finance" || slug === "habits" || slug === "rest") return 30;
+    if (slug === "deep-work") return 90;
+    if (slug === "competitions" || slug === "education" || slug === "career") return 60;
+  }
+
+  // Sensible standard default is 60 minutes
+  return 60;
 }
 
 /** "every monday", "daily", "weekdays" → the stored recurrence syntax. */
@@ -321,17 +484,29 @@ export function parseWhen(text: string, now: Date, timeZone: string): ParsedWhen
     }
   }
 
-  const clock = parseClock(lower);
+  const range = parseTimeRange(lower);
+  const clock = range ? { minutes: range.startMinutes, consumed: range.consumed } : parseClock(lower);
   if (!target && !clock) return null;
 
   const day = target ?? { year: local.year, month: local.month, day: local.day };
   const minutes = clock ? clock.minutes : 9 * 60;
 
+  const startDate = zonedToUtc({ ...day, hour: Math.floor(minutes / 60), minute: minutes % 60 }, timeZone);
+  let endDate: Date | null = null;
+  if (range) {
+    endDate = zonedToUtc(
+      { ...day, hour: Math.floor(range.endMinutes / 60), minute: range.endMinutes % 60 },
+      timeZone,
+    );
+  }
+
   return {
-    date: zonedToUtc({ ...day, hour: Math.floor(minutes / 60), minute: minutes % 60 }, timeZone),
+    date: startDate,
     explicitTime: Boolean(clock),
     explicitDate,
     minutes: clock?.minutes ?? null,
+    durationMinutes: range?.durationMinutes ?? null,
+    endDate,
   };
 }
 

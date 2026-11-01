@@ -3,10 +3,12 @@ import {
   detectDomain,
   detectIntent,
   extractTitle,
+  inferEventDuration,
   isAffirmative,
   isNegative,
   parseDuration,
   parseRecurrenceText,
+  parseTimeRange,
   parseWhen,
   titleCase,
 } from "@/lib/agent/nlu";
@@ -76,7 +78,38 @@ describe("parseDuration", () => {
     expect(parseDuration("90 minutes of revision")).toBe(90);
     expect(parseDuration("half an hour")).toBe(30);
     expect(parseDuration("an hour")).toBe(60);
+    expect(parseDuration("1.5 hours")).toBe(90);
+    expect(parseDuration("30-minute sync")).toBe(30);
+    expect(parseDuration("1 hour 15 mins")).toBe(75);
     expect(parseDuration("no idea")).toBeNull();
+  });
+
+  it("reads time ranges as durations", () => {
+    expect(parseDuration("from 2pm to 3:30pm")).toBe(90);
+    expect(parseDuration("from 10am to 11am")).toBe(60);
+    expect(parseDuration("3pm - 4:15pm")).toBe(75);
+    expect(parseDuration("meeting from 4 to 5 pm")).toBe(60);
+  });
+});
+
+describe("inferEventDuration", () => {
+  it("infers tailored durations when none specified", () => {
+    expect(inferEventDuration("daily standup with team")).toBe(15);
+    expect(inferEventDuration("quick sync")).toBe(15);
+    expect(inferEventDuration("1:1 with mentor")).toBe(30);
+    expect(inferEventDuration("coffee with Sarah")).toBe(30);
+    expect(inferEventDuration("lunch with Alex")).toBe(45);
+    expect(inferEventDuration("dentist appointment")).toBe(45);
+    expect(inferEventDuration("gym session")).toBe(60);
+    expect(inferEventDuration("karate training")).toBe(60);
+    expect(inferEventDuration("team meeting")).toBe(60);
+    expect(inferEventDuration("study block for algorithms")).toBe(90);
+    expect(inferEventDuration("midterm exam")).toBe(120);
+  });
+
+  it("respects explicit durations over inference", () => {
+    expect(inferEventDuration("quick sync for 45 minutes")).toBe(45);
+    expect(inferEventDuration("gym for 30 mins")).toBe(30);
   });
 });
 

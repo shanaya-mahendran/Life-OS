@@ -27,6 +27,7 @@ import {
   detectDomain,
   detectIntent,
   extractTitle,
+  inferEventDuration,
   parseDuration,
   parseRecurrenceText,
   parseWhen,
@@ -178,13 +179,18 @@ async function handleCreate(ctx: AgentContext, message: string): Promise<RuleOut
     return emptyOutcome("create", `Happy to block “${title}” — when should it go? Try “tomorrow at 9am” or “Friday 6pm”.`, domainSlug);
   }
 
-  const minutes = Math.min(parseDuration(message) ?? 90, 480);
+  const duration =
+    when.durationMinutes ??
+    parseDuration(message) ??
+    inferEventDuration(message, domainSlug);
+  const minutes = Math.min(Math.max(duration, 15), 480);
   const recurrence = parseRecurrenceText(message);
 
   const result = await createEvent(ctx.user, {
     domainSlug,
     title,
     start: when.date,
+    end: when.endDate ?? undefined,
     minutes,
     recurrence,
     source: "agent",
@@ -252,7 +258,7 @@ async function handleMove(ctx: AgentContext, message: string): Promise<RuleOutco
       );
 
   const duration = Math.round((target.end.getTime() - target.start.getTime()) / 60_000);
-  const minutes = parseDuration(message) ?? duration;
+  const minutes = when.durationMinutes ?? parseDuration(message) ?? duration;
 
   const result = await updateEvent(ctx.user, target.id, { start, minutes });
 

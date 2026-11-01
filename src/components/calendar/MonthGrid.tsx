@@ -75,32 +75,49 @@ export function MonthGrid({ days, events, timeZone, selectedId, onSelectEvent, o
                 </div>
 
                 <div className="space-y-1">
-                  {visible.map((event) => (
-                    <button
-                      key={`${event.id}-${event.start}`}
-                      onClick={(clickEvent) => {
-                        clickEvent.stopPropagation();
-                        onSelectEvent(event);
-                      }}
-                      className={cn(
-                        "flex w-full items-center gap-1 rounded-md border px-1.5 py-[0.18rem] text-left transition hover:brightness-110",
-                        selectedId === event.id && "ring-1 ring-white/60",
-                      )}
-                      style={{
-                        borderColor: withAlpha(event.domainAccent, 0.35),
-                        backgroundColor: withAlpha(event.domainAccent, 0.16),
-                      }}
-                    >
-                      <span
-                        className="h-1.5 w-1.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: event.domainAccent }}
-                      />
-                      <span className="truncate text-[0.63rem] font-medium text-white/85">{event.title}</span>
-                      <span className="ml-auto hidden shrink-0 text-[0.55rem] text-white/35 xl:block">
-                        {timeLabel(event.start, timeZone)}
-                      </span>
-                    </button>
-                  ))}
+                  {visible.map((event) => {
+                    const duration = Math.max(
+                      15,
+                      Math.round((new Date(event.end).getTime() - new Date(event.start).getTime()) / 60000),
+                    );
+                    const durLabel =
+                      duration < 60
+                        ? `${duration}m`
+                        : duration % 60 === 0
+                          ? `${duration / 60}h`
+                          : `${Math.floor(duration / 60)}h ${duration % 60}m`;
+
+                    return (
+                      <button
+                        key={`${event.id}-${event.start}`}
+                        onClick={(clickEvent) => {
+                          clickEvent.stopPropagation();
+                          onSelectEvent(event);
+                        }}
+                        className={cn(
+                          "flex w-full items-center gap-1 rounded-md border px-1.5 py-[0.18rem] text-left transition hover:brightness-110",
+                          selectedId === event.id && "ring-1 ring-white/60",
+                        )}
+                        style={{
+                          borderColor: withAlpha(event.domainAccent, 0.35),
+                          backgroundColor: withAlpha(event.domainAccent, 0.16),
+                        }}
+                        title={`${event.title} (${durLabel}) · ${timeLabel(event.start, timeZone)} – ${timeLabel(
+                          event.end,
+                          timeZone,
+                        )} · ${event.domainName}`}
+                      >
+                        <span
+                          className="h-1.5 w-1.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: event.domainAccent }}
+                        />
+                        <span className="truncate text-[0.63rem] font-medium text-white/85">{event.title}</span>
+                        <span className="ml-auto shrink-0 text-[0.55rem] font-medium text-white/45">
+                          {durLabel}
+                        </span>
+                      </button>
+                    );
+                  })}
 
                   {overflow > 0 && (
                     <div className="pl-1 text-[0.6rem] font-medium text-violet-300/80">+{overflow} more</div>

@@ -143,12 +143,14 @@ export function WeekGrid({
 
                 {items.map((event) => {
                   const startMinutes = minutesOfDay(event.start, timeZone);
-                  const duration =
-                    (new Date(event.end).getTime() - new Date(event.start).getTime()) / 60000;
+                  const duration = Math.max(
+                    15,
+                    Math.round((new Date(event.end).getTime() - new Date(event.start).getTime()) / 60000),
+                  );
                   const clampedStart = Math.max(startMinutes, dayStartHour * 60);
                   const clampedEnd = Math.min(startMinutes + duration, dayEndHour * 60);
                   const top = ((clampedStart - dayStartHour * 60) / 60) * ROW_HEIGHT;
-                  const height = Math.max(24, ((clampedEnd - clampedStart) / 60) * ROW_HEIGHT - 2);
+                  const height = Math.max(26, ((clampedEnd - clampedStart) / 60) * ROW_HEIGHT - 2);
                   const selected = event.id === selectedId;
                   const short = height < 44;
 
@@ -183,9 +185,12 @@ export function WeekGrid({
                         )})`,
                         boxShadow: `inset 2px 0 0 0 ${event.domainAccent}`,
                       }}
-                      title={`${event.title} · ${event.domainName}`}
+                      title={`${event.title} (${duration}m) · ${timeLabel(event.start, timeZone)} – ${timeLabel(
+                        event.end,
+                        timeZone,
+                      )} · ${event.domainName}`}
                     >
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 min-w-0">
                         <span
                           className="h-1.5 w-1.5 shrink-0 rounded-full"
                           style={{ backgroundColor: event.domainAccent }}
@@ -193,10 +198,15 @@ export function WeekGrid({
                         <span className="truncate text-[0.7rem] font-semibold leading-tight text-white/95">
                           {event.title}
                         </span>
+                        {short && (
+                          <span className="ml-auto shrink-0 text-[0.58rem] font-medium text-white/50">
+                            {duration}m
+                          </span>
+                        )}
                       </div>
                       {!short && (
                         <div className="mt-0.5 truncate text-[0.6rem] leading-tight text-white/60">
-                          {timeLabel(event.start, timeZone)} – {timeLabel(event.end, timeZone)}
+                          {timeLabel(event.start, timeZone)} – {timeLabel(event.end, timeZone)} ({duration}m)
                         </div>
                       )}
                     </button>
