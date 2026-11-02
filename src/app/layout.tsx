@@ -50,7 +50,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="LifeOS" />
       </head>
-      <body className="min-h-dvh antialiased overscroll-none select-none md:select-auto">
+      <body
+        className="min-h-dvh antialiased overscroll-none select-none md:select-auto"
+        suppressHydrationWarning
+      >
         <PwaRegister />
         {children}
       </body>

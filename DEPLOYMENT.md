@@ -64,6 +64,18 @@ Add the following environment variables under **Settings → Environment Variabl
 > [!NOTE]
 > Ensure special characters in the database password (such as `'`, `"`, `,`) are URL-encoded (`%27`, `%22`, `%2C`) in `DATABASE_URL` and `DIRECT_URL`.
 
+### Apply the Prisma schema to production
+
+This project does not have a `prisma/migrations` directory, so Vercel's build does not create database tables. Before first use, run `npx prisma db push` from the project root using the production `DATABASE_URL` and `DIRECT_URL` from Vercel.
+
+Make sure both URLs point to the **same Supabase project**: `DATABASE_URL` should use the pooler (port `6543`) and `DIRECT_URL` the direct connection (port `5432`). Set them in your local shell to the Vercel production values, then run:
+
+```powershell
+npx prisma db push
+```
+
+Confirm Prisma reports that the database is in sync. Do not add `prisma db push` to the Vercel build command; apply schema changes deliberately before deploying them.
+
 ---
 
 ## 5. Configure Supabase Auth Redirects
