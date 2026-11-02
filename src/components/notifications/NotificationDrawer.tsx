@@ -39,7 +39,44 @@ export function NotificationDrawer({ open, onClose, onCountChange }: Notificatio
   const [notifications, setNotifications] = useState<UiNotification[]>([]);
   const [loading, setLoading] = useState(false);
   const [actionBusyId, setActionBusyId] = useState<string | null>(null);
+  const [perm, setPerm] = useState<NotificationPermission>("default");
   const [, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      setPerm(Notification.permission);
+    }
+  }, [open]);
+
+  async function requestPerm() {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+    const res = await Notification.requestPermission();
+    setPerm(res);
+    if (res === "granted" && "serviceWorker" in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: "TRIGGER_NOTIFICATION",
+        title: "Phone Notifications Active 🔔",
+        message: "You'll now receive timely alerts 30m before, 15m before, and 15m after your events!",
+        link: "/today",
+      });
+    }
+  }
+
+  function sendTestAlert() {
+    if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: "TRIGGER_NOTIFICATION",
+        title: "Test Alert: Mentoring in 15m 🔔",
+        message: "Starts at 3:00 PM. Your phone notifications are working perfectly!",
+        link: "/calendar",
+      });
+    } else if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+      new Notification("Test Alert: Mentoring in 15m 🔔", {
+        body: "Starts at 3:00 PM. Your phone notifications are working perfectly!",
+        icon: "/icons/icon-192.png",
+      });
+    }
+  }
 
   async function fetchNotifications() {
     try {
@@ -145,6 +182,40 @@ export function NotificationDrawer({ open, onClose, onCountChange }: Notificatio
               <X className="h-4 w-4" />
             </button>
           </div>
+        </div>
+
+        {/* Device Notification Status / Prompt */}
+        <div className="mt-3 rounded-2xl border border-violet-500/25 bg-[linear-gradient(135deg,rgba(40,20,80,0.5),rgba(15,10,25,0.7))] p-3 text-[0.72rem]">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className={`h-2 w-2 rounded-full ${perm === "granted" ? "bg-emerald-400 shadow-[0_0_8px_#34d399]" : "bg-amber-400 shadow-[0_0_8px_#fbbf24]"}`} />
+              <span className="font-semibold text-white/90">
+                {perm === "granted" ? "Phone Alerts Active" : "Enable Phone & Lockscreen Alerts"}
+              </span>
+            </div>
+            {perm !== "granted" ? (
+              <button
+                type="button"
+                onClick={() => void requestPerm()}
+                className="rounded-xl bg-violet-600 px-2.5 py-1 text-[0.65rem] font-bold text-white shadow-sm hover:bg-violet-500 active:scale-95 transition"
+              >
+                Enable
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={sendTestAlert}
+                className="rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-[0.62rem] text-violet-300 hover:bg-white/10"
+              >
+                Test Alert
+              </button>
+            )}
+          </div>
+          <p className="mt-1 text-[0.65rem] text-white/45 leading-relaxed">
+            {perm === "granted"
+              ? "You'll receive alerts 30m and 15m before each block, plus a 15m achievement check-in."
+              : "Allow notifications to receive reminder alerts directly in your phone notification shade."}
+          </p>
         </div>
 
         {/* Content list */}

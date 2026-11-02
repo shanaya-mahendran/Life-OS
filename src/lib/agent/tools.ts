@@ -224,6 +224,7 @@ export const TOOLS: AgentTool[] = [
         .string()
         .optional()
         .describe("Optional repeat rule: DAILY, WEEKLY or WEEKLY:MO,WE,FR."),
+      force: z.boolean().optional().describe("Set true to force create despite non-blocking warnings."),
     }),
     async handler(args, ctx) {
       const domainSlug = resolveDomainSlug(String(args.domain ?? ""));
@@ -233,19 +234,22 @@ export const TOOLS: AgentTool[] = [
       const start = parseWhen(String(args.start ?? ""), ctx.user.timezone);
       if (!start) return { data: { error: "Could not understand the start time." } };
 
-      const minutes = typeof args.minutes === "number" ? Math.round(args.minutes) : undefined;
       const end = typeof args.end === "string" ? parseWhen(args.end, ctx.user.timezone) ?? undefined : undefined;
+      let minutes = typeof args.minutes === "number" ? Math.round(args.minutes) : undefined;
+      if (!minutes && end) {
+        minutes = Math.max(15, Math.round((end.getTime() - start.getTime()) / 60_000));
+      }
 
       const result = await createEvent(ctx.user, {
         domainSlug,
         title: String(args.title ?? "Untitled block").slice(0, 160),
         start,
         end,
-        minutes: minutes ?? (end ? undefined : 60),
+        minutes: minutes ?? 60,
         description: typeof args.description === "string" ? args.description : "",
         recurrence: typeof args.recurrence === "string" && args.recurrence ? args.recurrence : null,
         source: "agent",
-        force: false,
+        force: Boolean(args.force),
       });
 
       if (!result.ok) {

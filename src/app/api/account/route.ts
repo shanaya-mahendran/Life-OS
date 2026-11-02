@@ -15,7 +15,7 @@ const prefsSchema = z.object({
   dayStartHour: z.number().int().min(0).max(12).optional(),
   dayEndHour: z.number().int().min(12).max(23).optional(),
   minSleepHours: z.number().min(4).max(12).optional(),
-  maxFocusHours: z.number().int().min(1).max(16).optional(),
+  maxFocusHours: z.number().int().min(1).max(20).optional(),
   monthlyTokenBudget: z.number().int().min(0).max(50_000_000).optional(),
 });
 

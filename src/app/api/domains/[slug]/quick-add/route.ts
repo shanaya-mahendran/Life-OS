@@ -44,10 +44,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
     end: slot.end,
     description: parsed.data.description ?? "",
     source: "manual",
+    force: true,
   });
 
   if (!result.ok || !result.event) {
-    return jsonError(result.message ?? "Could not add that block.", 400);
+    const reason = result.conflicts?.map((c) => c.message).join(", ") || result.message || "Could not add that block.";
+    return jsonError(reason, 400);
   }
 
   return NextResponse.json({

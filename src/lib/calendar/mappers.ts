@@ -29,7 +29,9 @@ export function toCalendarEvent(row: EventWithDomain): CalendarEvent {
     domainName: row.domain.name,
     domainAccent: row.domain.accent,
     isProtected:
-      row.domain.isProtected || DOMAIN_MAP[row.domain.slug]?.protectedByDefault === true,
+      row.domain.slug !== "sleep" &&
+      row.domain.slug !== "food" &&
+      (row.domain.isProtected || DOMAIN_MAP[row.domain.slug]?.protectedByDefault === true),
     title: row.title,
     description: row.description,
     start: row.start,

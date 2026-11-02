@@ -80,3 +80,57 @@ self.addEventListener("fetch", (event) => {
       })
   );
 });
+
+// ── Native Push & Device Notifications ────────────────────────
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { title: "LifeOS Notification", message: event.data?.text?.() ?? "New schedule update." };
+  }
+
+  const title = data.title || "LifeOS Alert 🔔";
+  const options = {
+    body: data.message || "Your scheduled block is coming up.",
+    icon: "/icons/icon-192.png",
+    badge: "/icons/icon-192.png",
+    data: { url: data.link || "/today" },
+    vibrate: [150, 80, 150],
+    tag: data.id || "lifeos-event-notification",
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const urlToOpen = event.notification.data?.url || "/today";
+
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
+      for (const client of windowClients) {
+        if (client.url.includes(urlToOpen) && "focus" in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
+  );
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "TRIGGER_NOTIFICATION") {
+    const { title, message, link, id } = event.data;
+    self.registration.showNotification(title || "LifeOS Reminder", {
+      body: message || "",
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      data: { url: link || "/today" },
+      vibrate: [150, 80, 150],
+      tag: id || String(Date.now()),
+    });
+  }
+});

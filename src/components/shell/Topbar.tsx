@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Bell, LogOut, Search } from "lucide-react";
+import { Bell, LogOut, Menu, Search } from "lucide-react";
 import { initials } from "@/lib/utils";
 import { signOutUser } from "@/lib/auth-client";
 
@@ -14,7 +14,7 @@ interface TopbarProps {
   onOpenNotifications?: () => void;
 }
 
-export function Topbar({ userName, notificationCount, onOpenSearch, onOpenNotifications }: TopbarProps) {
+export function Topbar({ userName, notificationCount, onOpenSearch, onOpenMenu, onOpenNotifications }: TopbarProps) {
   const firstName = userName.split(" ")[0];
 
   return (
@@ -26,27 +26,32 @@ export function Topbar({ userName, notificationCount, onOpenSearch, onOpenNotifi
       }}
     >
       <div className="flex items-center justify-between gap-3">
-        {/* Mobile Brand (as shown in reference design) */}
-        <Link href="/today" className="flex items-center gap-2.5 focus:outline-none lg:hidden">
-          <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-xl shadow-[0_0_15px_rgba(124,92,255,0.4)]">
-            <Image
-              src="/icons/icon-192.png"
-              alt="LifeOS"
-              width={32}
-              height={32}
-              className="h-full w-full object-cover"
-              priority
-            />
-          </div>
-          <div className="flex flex-col">
-            <span className="font-display text-base font-bold tracking-tight text-white">
+        {/* Mobile Hamburger & Brand */}
+        <div className="flex items-center gap-2 lg:hidden">
+          <button
+            type="button"
+            onClick={onOpenMenu}
+            className="grid h-9 w-9 place-items-center rounded-xl border border-white/[0.08] bg-white/[0.04] text-white/70 transition hover:bg-white/10 hover:text-white active:scale-95"
+            aria-label="Open navigation menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <Link href="/today" className="flex items-center gap-2 focus:outline-none">
+            <div className="relative h-7 w-7 shrink-0 overflow-hidden rounded-lg shadow-[0_0_12px_rgba(124,92,255,0.4)]">
+              <Image
+                src="/icons/icon-192.png"
+                alt="LifeOS"
+                width={28}
+                height={28}
+                className="h-full w-full object-cover"
+                priority
+              />
+            </div>
+            <span className="font-display text-sm font-bold tracking-tight text-white">
               Life<span className="bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">OS</span>
             </span>
-            <span className="text-[0.6rem] font-medium tracking-wide text-white/40">
-              Plan • Achieve • Thrive
-            </span>
-          </div>
-        </Link>
+          </Link>
+        </div>
 
         {/* Desktop Search Bar */}
         <button

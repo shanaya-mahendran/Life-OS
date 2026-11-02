@@ -232,6 +232,38 @@ export function EventForm({
           </label>
         </div>
 
+        {/* Quick Duration Presets */}
+        <div className="space-y-1.5">
+          <span className="label">Quick Duration</span>
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              { label: "15m", mins: 15 },
+              { label: "30m", mins: 30 },
+              { label: "45m", mins: 45 },
+              { label: "1h", mins: 60 },
+              { label: "1.5h", mins: 90 },
+              { label: "2h", mins: 120 },
+              { label: "3h", mins: 180 },
+              { label: "4h", mins: 240 },
+            ].map((dur) => (
+              <button
+                key={dur.mins}
+                type="button"
+                onClick={() => {
+                  const [h, m] = startTime.split(":").map(Number);
+                  const total = (h * 60 + m + dur.mins) % 1440;
+                  const newH = String(Math.floor(total / 60)).padStart(2, "0");
+                  const newM = String(total % 60).padStart(2, "0");
+                  setEndTime(`${newH}:${newM}`);
+                }}
+                className="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[0.68rem] text-white/70 transition hover:border-violet-400/50 hover:bg-violet-500/15 hover:text-white"
+              >
+                {dur.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <label className="block space-y-1.5">
           <span className="label">Repeat</span>
           <select value={recurrence} onChange={(event_) => setRecurrence(event_.target.value)} className="field">
@@ -244,11 +276,17 @@ export function EventForm({
             <option value="WEEKLY" className="bg-[#150f28]">
               Every week
             </option>
+            <option value="WEEKLY:MO,SA" className="bg-[#150f28]">
+              Every Mon, Sat (Mentoring)
+            </option>
             <option value="WEEKLY:MO,WE,FR" className="bg-[#150f28]">
               Mon, Wed, Fri
             </option>
             <option value="WEEKLY:TU,TH" className="bg-[#150f28]">
               Tue, Thu
+            </option>
+            <option value="WEEKLY:SA,SU" className="bg-[#150f28]">
+              Weekends (Sat, Sun)
             </option>
           </select>
         </label>

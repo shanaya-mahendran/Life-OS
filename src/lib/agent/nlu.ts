@@ -339,23 +339,27 @@ export function inferEventDuration(text: string, domainSlug?: string | null): nu
   return 60;
 }
 
-/** "every monday", "daily", "weekdays" → the stored recurrence syntax. */
+/** "every monday", "daily", "weekdays", "mondays and saturdays" → the stored recurrence syntax. */
 export function parseRecurrenceText(text: string): string | null {
   const lower = normalise(text);
   if (/\bevery day\b|\bdaily\b|\beach day\b/.test(lower)) return "DAILY";
 
+  const isRepeating = /\bevery\b|\beach\b|\brepeat\b|\brepeating\b|\brecurring\b|\bon\b/.test(lower);
   const weekdays = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
   const codes = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
   const found: string[] = [];
   for (let index = 0; index < weekdays.length; index += 1) {
-    const short = weekdays[index].slice(0, 3);
-    if (new RegExp(`\\b(${weekdays[index]}|${short})\\b`).test(lower) && /\bevery\b|\beach\b/.test(lower)) {
+    const name = weekdays[index];
+    const short = name.slice(0, 3);
+    const regex = new RegExp(`\\b(${name}s?|${short})\\b`);
+    if (regex.test(lower) && isRepeating) {
       found.push(codes[index]);
     }
   }
   if (found.length) return `WEEKLY:${found.join(",")}`;
 
-  if (/\bweekdays\b/.test(lower)) return "WEEKLY:MO,TU,WE,TH,FR";
+  if (/\bweekdays?\b/.test(lower)) return "WEEKLY:MO,TU,WE,TH,FR";
+  if (/\bweekends?\b/.test(lower)) return "WEEKLY:SA,SU";
   if (/\bevery week\b|\bweekly\b|\beach week\b/.test(lower)) return "WEEKLY";
   return null;
 }
@@ -459,8 +463,15 @@ export function parseWhen(text: string, now: Date, timeZone: string): ParsedWhen
       const wanted = WEEKDAYS[weekdayMatch[1]];
       const currentWeekday = local.weekday;
       let delta = (wanted - currentWeekday + 7) % 7;
-      if (delta === 0) delta = 7; // "Monday" on a Monday means next Monday
-      if (/\bnext\b/.test(lower)) delta += 0;
+      if (delta === 0) {
+        const range = parseTimeRange(lower);
+        const clock = range ? { minutes: range.startMinutes } : parseClock(lower);
+        const currentMins = (now.getTime() - today.getTime()) / 60_000;
+        if (clock && clock.minutes <= currentMins) {
+          delta = 7;
+        }
+      }
+      if (/\bnext\b/.test(lower)) delta = delta === 0 ? 7 : delta;
       const shift = new Date(Date.UTC(local.year, local.month - 1, local.day + delta));
       target = {
         year: shift.getUTCFullYear(),
@@ -641,6 +652,10 @@ const FILLER_WORDS = new Set([
  * → "Pitch". Falls back to the original text when nothing useful is left.
  */
 export function extractTitle(text: string, fallback = "Planned block"): string {
+  // Check for explicitly quoted titles first (e.g. Create "Mentoring" for...)
+  const quoted = text.match(/["'“‘]([^"'”’]+)["'”’]/);
+  if (quoted && quoted[1].trim()) return quoted[1].trim();
+
   const cleaned = text
     .replace(/\b\d{4}-\d{2}-\d{2}\b/g, " ")
     .replace(/\b\d{1,2}(?::\d{2})?\s*(am|pm)\b/gi, " ")

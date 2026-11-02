@@ -10,7 +10,8 @@
  */
 
 import { prisma } from "@/lib/db";
-import { formatInZone } from "@/lib/time";
+import { formatInZone, dayKey } from "@/lib/time";
+import { expandOccurrences } from "@/lib/calendar/recurrence";
 
 const dbNotification = (prisma as any).notification;
 
@@ -46,7 +47,7 @@ function clock(date: Date, timeZone: string): string {
 }
 
 /**
- * Scans events across all active users and generates:
+ * Scans events across all active users (including recurring occurrences) and generates:
  * 1. 30 minutes before: "Upcoming in 30 minutes"
  * 2. 15 minutes before: "Starting in 15 minutes"
  * 3. 15 minutes after: "Did you achieve [Title]?"
@@ -58,148 +59,199 @@ export async function generateEventNotifications(now: Date = new Date()): Promis
     after15mCount: 0,
   };
 
-  // Time boundaries
   const nowMs = now.getTime();
-  const startWindow30MinFrom = new Date(nowMs + 22 * 60 * 1000);
-  const startWindow30MinTo = new Date(nowMs + 38 * 60 * 1000);
+  const startWindow30MinFrom = new Date(nowMs + 20 * 60 * 1000);
+  const startWindow30MinTo = new Date(nowMs + 40 * 60 * 1000);
 
-  const startWindow15MinFrom = new Date(nowMs + 7 * 60 * 1000);
-  const startWindow15MinTo = new Date(nowMs + 22 * 60 * 1000);
+  const startWindow15MinFrom = new Date(nowMs + 5 * 60 * 1000);
+  const startWindow15MinTo = new Date(nowMs + 20 * 60 * 1000);
 
-  const endWindow15MinFrom = new Date(nowMs - 35 * 60 * 1000);
-  const endWindow15MinTo = new Date(nowMs - 7 * 60 * 1000);
+  const endWindow15MinFrom = new Date(nowMs - 45 * 60 * 1000);
+  const endWindow15MinTo = new Date(nowMs - 5 * 60 * 1000);
 
-  // 1. Check for events starting in ~30 minutes
-  const events30m = await prisma.event.findMany({
+  // Scan window: 2 hours around now for expansion
+  const scanFrom = new Date(nowMs - 2 * 60 * 60 * 1000);
+  const scanTo = new Date(nowMs + 2 * 60 * 60 * 1000);
+
+  // Fetch all active events that could either start in range or repeat
+  const candidateEvents = await prisma.event.findMany({
     where: {
-      start: { gte: startWindow30MinFrom, lte: startWindow30MinTo },
       status: { notIn: ["cancelled"] },
+      OR: [
+        { start: { gte: scanFrom, lte: scanTo } },
+        { recurrence: { not: null }, start: { lte: scanTo } },
+      ],
     },
     include: {
       user: { select: { timezone: true } },
       domain: { select: { name: true, accent: true, slug: true } },
     },
-    take: 200,
+    take: 300,
   });
 
-  for (const event of events30m) {
-    try {
-      await dbNotification.upsert({
-        where: {
-          userId_eventId_type: {
-            userId: event.userId,
-            eventId: event.id,
-            type: "before_30m",
-          },
-        },
-        create: {
+  // Flatten events and their recurring occurrences
+  interface FlattenedEvent {
+    id: string;
+    userId: string;
+    title: string;
+    start: Date;
+    end: Date;
+    domainSlug: string;
+    domainName: string;
+    domainAccent: string;
+    userTimezone: string;
+    isRecurring: boolean;
+  }
+
+  const flattened: FlattenedEvent[] = [];
+  for (const event of candidateEvents) {
+    const tz = event.user?.timezone || "Asia/Kolkata";
+    if (event.recurrence) {
+      const occurrences = expandOccurrences(
+        { start: event.start, end: event.end, recurrence: event.recurrence, recurrenceUntil: event.recurrenceUntil },
+        scanFrom,
+        scanTo,
+        tz,
+      );
+      for (const occ of occurrences) {
+        flattened.push({
+          id: event.id,
           userId: event.userId,
-          eventId: event.id,
-          type: "before_30m",
-          title: `Upcoming in 30m: ${event.title}`,
-          message: `Starts at ${clock(event.start, event.user.timezone)} in ${event.domain.name}.`,
-          link: `/calendar`,
-          metadata: {
-            domainSlug: event.domain.slug,
-            domainAccent: event.domain.accent,
-            start: event.start.toISOString(),
-          },
-        },
-        update: {},
+          title: event.title,
+          start: occ.start,
+          end: occ.end,
+          domainSlug: event.domain.slug,
+          domainName: event.domain.name,
+          domainAccent: event.domain.accent,
+          userTimezone: tz,
+          isRecurring: true,
+        });
+      }
+    } else {
+      flattened.push({
+        id: event.id,
+        userId: event.userId,
+        title: event.title,
+        start: event.start,
+        end: event.end,
+        domainSlug: event.domain.slug,
+        domainName: event.domain.name,
+        domainAccent: event.domain.accent,
+        userTimezone: tz,
+        isRecurring: false,
       });
-      result.before30mCount += 1;
-    } catch {
-      // already exists, unique constraint honored
     }
   }
 
-  // 2. Check for events starting in ~15 minutes
-  const events15m = await prisma.event.findMany({
-    where: {
-      start: { gte: startWindow15MinFrom, lte: startWindow15MinTo },
-      status: { notIn: ["cancelled"] },
-    },
-    include: {
-      user: { select: { timezone: true } },
-      domain: { select: { name: true, accent: true, slug: true } },
-    },
-    take: 200,
-  });
+  for (const item of flattened) {
+    const itemStartMs = item.start.getTime();
+    const itemEndMs = item.end.getTime();
+    const dateKey = dayKey(item.start, item.userTimezone);
 
-  for (const event of events15m) {
-    try {
-      await dbNotification.upsert({
-        where: {
-          userId_eventId_type: {
-            userId: event.userId,
-            eventId: event.id,
-            type: "before_15m",
+    // 1. Check 30m before
+    if (itemStartMs >= startWindow30MinFrom.getTime() && itemStartMs <= startWindow30MinTo.getTime()) {
+      const typeKey = item.isRecurring ? `before_30m:${dateKey}` : "before_30m";
+      try {
+        const existing = await dbNotification.findFirst({
+          where: {
+            userId: item.userId,
+            eventId: item.id,
+            type: typeKey,
           },
-        },
-        create: {
-          userId: event.userId,
-          eventId: event.id,
-          type: "before_15m",
-          title: `Starting in 15m: ${event.title}`,
-          message: `Starting soon at ${clock(event.start, event.user.timezone)}. Time to focus!`,
-          link: `/calendar`,
-          metadata: {
-            domainSlug: event.domain.slug,
-            domainAccent: event.domain.accent,
-            start: event.start.toISOString(),
-          },
-        },
-        update: {},
-      });
-      result.before15mCount += 1;
-    } catch {
-      // already exists
+        });
+
+        if (!existing) {
+          await dbNotification.create({
+            data: {
+              userId: item.userId,
+              eventId: item.id,
+              type: typeKey,
+              title: `Upcoming in 30m: ${item.title}`,
+              message: `Starts at ${clock(item.start, item.userTimezone)} in ${item.domainName}.`,
+              link: `/calendar`,
+              metadata: {
+                domainSlug: item.domainSlug,
+                domainAccent: item.domainAccent,
+                start: item.start.toISOString(),
+              },
+            },
+          });
+          result.before30mCount += 1;
+        }
+      } catch {
+        // ignore unique/race errors
+      }
     }
-  }
 
-  // 3. Check for events that ended ~15 minutes ago to confirm achievement
-  const eventsFinished = await prisma.event.findMany({
-    where: {
-      end: { gte: endWindow15MinFrom, lte: endWindow15MinTo },
-      status: { notIn: ["cancelled"] },
-      domain: { slug: { notIn: ["sleep"] } },
-    },
-    include: {
-      user: { select: { timezone: true } },
-      domain: { select: { name: true, accent: true, slug: true } },
-    },
-    take: 200,
-  });
+    // 2. Check 15m before
+    if (itemStartMs >= startWindow15MinFrom.getTime() && itemStartMs <= startWindow15MinTo.getTime()) {
+      const typeKey = item.isRecurring ? `before_15m:${dateKey}` : "before_15m";
+      try {
+        const existing = await dbNotification.findFirst({
+          where: {
+            userId: item.userId,
+            eventId: item.id,
+            type: typeKey,
+          },
+        });
 
-  for (const event of eventsFinished) {
-    try {
-      await dbNotification.upsert({
-        where: {
-          userId_eventId_type: {
-            userId: event.userId,
-            eventId: event.id,
-            type: "after_15m",
+        if (!existing) {
+          await dbNotification.create({
+            data: {
+              userId: item.userId,
+              eventId: item.id,
+              type: typeKey,
+              title: `Starting in 15m: ${item.title}`,
+              message: `Starting soon at ${clock(item.start, item.userTimezone)}. Time to focus!`,
+              link: `/calendar`,
+              metadata: {
+                domainSlug: item.domainSlug,
+                domainAccent: item.domainAccent,
+                start: item.start.toISOString(),
+              },
+            },
+          });
+          result.before15mCount += 1;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    // 3. Check 15m after (confirm achievement)
+    if (itemEndMs >= endWindow15MinFrom.getTime() && itemEndMs <= endWindow15MinTo.getTime()) {
+      const typeKey = item.isRecurring ? `after_15m:${dateKey}` : "after_15m";
+      try {
+        const existing = await dbNotification.findFirst({
+          where: {
+            userId: item.userId,
+            eventId: item.id,
+            type: typeKey,
           },
-        },
-        create: {
-          userId: event.userId,
-          eventId: event.id,
-          type: "after_15m",
-          title: `Confirm: Did you achieve “${event.title}”?`,
-          message: `Scheduled time finished at ${clock(event.end, event.user.timezone)}. Confirm to track your adherence.`,
-          link: `/today`,
-          metadata: {
-            domainSlug: event.domain.slug,
-            domainAccent: event.domain.accent,
-            eventTitle: event.title,
-            currentStatus: event.status,
-          },
-        },
-        update: {},
-      });
-      result.after15mCount += 1;
-    } catch {
-      // already exists
+        });
+
+        if (!existing) {
+          await dbNotification.create({
+            data: {
+              userId: item.userId,
+              eventId: item.id,
+              type: typeKey,
+              title: `Confirm: Did you achieve “${item.title}”?`,
+              message: `Finished at ${clock(item.end, item.userTimezone)}. Confirm to track your adherence.`,
+              link: `/today`,
+              metadata: {
+                domainSlug: item.domainSlug,
+                domainAccent: item.domainAccent,
+                eventTitle: item.title,
+                end: item.end.toISOString(),
+              },
+            },
+          });
+          result.after15mCount += 1;
+        }
+      } catch {
+        // ignore
+      }
     }
   }
 

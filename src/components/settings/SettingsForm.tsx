@@ -217,7 +217,7 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
               <input
                 type="number"
                 min={1}
-                max={16}
+                max={20}
                 value={values.maxFocusHours}
                 onChange={(event) => update("maxFocusHours", Number(event.target.value))}
                 className="field"

@@ -6,6 +6,7 @@ import { Topbar } from "./Topbar";
 import { MobileTabs, ChatFab } from "./MobileTabs";
 import { CommandPalette } from "./CommandPalette";
 import { NotificationDrawer } from "@/components/notifications/NotificationDrawer";
+import { NotificationDeviceNotifier } from "@/components/notifications/NotificationDeviceNotifier";
 import { MobileInstallBanner } from "@/components/pwa/InstallButton";
 
 interface AppShellProps {
@@ -79,6 +80,7 @@ export function AppShell({ userName, domains, adherence, notificationCount, chil
         onClose={() => setNotificationsOpen(false)}
         onCountChange={setCount}
       />
+      <NotificationDeviceNotifier onCountChange={setCount} />
     </div>
   );
 }

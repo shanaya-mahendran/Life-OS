@@ -175,13 +175,8 @@ async function collectConflicts(
     plannedMinutesByDay[key] = (plannedMinutesByDay[key] ?? 0) + duration;
   }
 
-  // Sleep is protected even if the user has not scheduled it explicitly.
-  const protectedWindows = buildSleepWindows(user, candidate.start, candidate.end).filter((window) => {
-    const alreadyScheduled = nearby.some(
-      (event) => event.domainSlug === "sleep" && event.start < window.end && event.end > window.start,
-    );
-    return !alreadyScheduled;
-  });
+  // Sleep and Food are not protected windows
+  const protectedWindows: { title: string; slug: string; start: Date; end: Date }[] = [];
 
   return findConflicts({
     candidate: {

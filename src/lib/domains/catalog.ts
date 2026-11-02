@@ -185,7 +185,7 @@ export const DOMAINS: DomainConfig[] = [
     tagline: "Meals, prep and planning.",
     accent: "#f97316",
     icon: "food",
-    protectedByDefault: true,
+    protectedByDefault: false,
     goals: ["Keep three sit-down meals each day", "Plan next week's meals", "Prep two batch meals"],
     eventTypes: [
       { title: "Lunch", minutes: 60 },
@@ -193,7 +193,7 @@ export const DOMAINS: DomainConfig[] = [
       { title: "Meal prep", minutes: 90 },
     ],
     guidance:
-      "Meals are protected time. Never shorten or overwrite a meal without explicit confirmation.",
+      "Meals, cooking, and prep. Can be scheduled or adjusted flexibly as needed.",
     wave: 2,
   },
   {
@@ -203,14 +203,14 @@ export const DOMAINS: DomainConfig[] = [
     tagline: "Bedtime, wind-down and recovery.",
     accent: "#4338ca",
     icon: "moon",
-    protectedByDefault: true,
+    protectedByDefault: false,
     goals: ["Sleep 7.5+ hours nightly", "Wind down 30 minutes before bed", "Wake at a consistent time"],
     eventTypes: [
       { title: "Sleep", minutes: 480 },
       { title: "Wind down", minutes: 30 },
     ],
     guidance:
-      "Sleep is sacred. If a requested change cuts a night below 7 hours, warn the user and ask before saving.",
+      "Bedtime, recovery, and sleep tracking.",
     wave: 1,
   },
   {

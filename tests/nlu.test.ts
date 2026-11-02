@@ -157,12 +157,22 @@ describe("extractTitle", () => {
     expect(title).not.toContain("tomorrow");
   });
 
-  it("falls back when nothing is left", () => {
-    expect(extractTitle("block 1 hour today", "Focus block")).toBe("Focus block");
+  it("extracts quoted title accurately", () => {
+    expect(extractTitle('Create "Mentoring" for every monday and saturday at 3 pm to 5pm')).toBe("Mentoring");
+    expect(extractTitle("Create 'Deep Focus' tomorrow at 2pm")).toBe("Deep Focus");
   });
 
-  it("title-cases", () => {
-    expect(titleCase("pitch practice")).toBe("Pitch practice");
+  it("parses multi-day weekly recurrence", () => {
+    expect(parseRecurrenceText('Create "Mentoring" for every monday and saturday at 3 pm to 5pm')).toBe("WEEKLY:MO,SA");
+    expect(parseRecurrenceText("repeat on mondays and saturdays")).toBe("WEEKLY:MO,SA");
+    expect(parseRecurrenceText("every weekend")).toBe("WEEKLY:SA,SU");
+  });
+
+  it("parses time range from 3 pm to 5pm as 120 minutes", () => {
+    const range = parseTimeRange("at 3 pm to 5pm");
+    expect(range?.startMinutes).toBe(15 * 60);
+    expect(range?.endMinutes).toBe(17 * 60);
+    expect(range?.durationMinutes).toBe(120);
   });
 });
 

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Loader2, Plus, Save, Target, Trash2, Zap } from "lucide-react";
+import { Check, Loader2, Plus, Save, Star, Target, Trash2, Zap } from "lucide-react";
 import { withAlpha } from "@/lib/utils";
 import { TaskChecklist, type ChecklistTask } from "@/components/today/TaskChecklist";
 import { ToastStack, type ToastMessage } from "@/components/ui/Toast";
@@ -33,6 +33,7 @@ export function DomainWorkspace({ domain, tasks, eventTypes }: DomainWorkspacePr
   const [notesSaved, setNotesSaved] = useState(true);
   const [taskTitle, setTaskTitle] = useState("");
   const [taskMinutes, setTaskMinutes] = useState(45);
+  const [taskIsPriority, setTaskIsPriority] = useState(false);
   const [saving, setSaving] = useState(false);
   const [busyBlock, setBusyBlock] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -111,7 +112,12 @@ export function DomainWorkspace({ domain, tasks, eventTypes }: DomainWorkspacePr
       const response = await fetch("/api/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ domainSlug: domain.slug, title, estimateMinutes: taskMinutes }),
+        body: JSON.stringify({
+          domainSlug: domain.slug,
+          title,
+          estimateMinutes: taskMinutes,
+          priority: taskIsPriority ? 3 : 1,
+        }),
       });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
@@ -119,7 +125,7 @@ export function DomainWorkspace({ domain, tasks, eventTypes }: DomainWorkspacePr
         return;
       }
       setTaskTitle("");
-      pushToast("Task added.");
+      pushToast(taskIsPriority ? "Top Priority task added." : "Task added.");
       startTransition(() => router.refresh());
     } finally {
       setSaving(false);
@@ -266,6 +272,19 @@ export function DomainWorkspace({ domain, tasks, eventTypes }: DomainWorkspacePr
                 </option>
               ))}
             </select>
+            <button
+              type="button"
+              onClick={() => setTaskIsPriority(!taskIsPriority)}
+              title={taskIsPriority ? "Top Priority (Click to make Normal)" : "Normal Priority (Click to make Top Priority)"}
+              className={`flex items-center gap-1 rounded-xl border px-2.5 py-1 text-[0.72rem] transition ${
+                taskIsPriority
+                  ? "border-amber-400/50 bg-amber-400/20 text-amber-300"
+                  : "border-white/10 bg-white/5 text-white/50 hover:text-white"
+              }`}
+            >
+              <Star className={`h-3.5 w-3.5 ${taskIsPriority ? "fill-amber-400 text-amber-400" : ""}`} />
+              <span className="hidden sm:inline">{taskIsPriority ? "Top Priority" : "Priority"}</span>
+            </button>
             <button type="submit" disabled={saving || !taskTitle.trim()} className="btn btn-primary">
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
               Add task

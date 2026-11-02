@@ -222,8 +222,9 @@ async function handleCreate(ctx: AgentContext, message: string): Promise<RuleOut
   }
 
   const event = result.event!;
+  const repeatText = recurrence ? ` (repeating ${recurrence.replace("WEEKLY:", "").replace(",", " & ")})` : "";
   return {
-    reply: `Done — ${event.title} is scheduled ${dayLabel(event.start, ctx.user.timezone)} from ${clockLabel(
+    reply: `Done — “${event.title}” is scheduled${repeatText} starting ${dayLabel(event.start, ctx.user.timezone)} from ${clockLabel(
       event.start,
       ctx.user.timezone,
     )} to ${clockLabel(event.end, ctx.user.timezone)}.`,
@@ -233,7 +234,19 @@ async function handleCreate(ctx: AgentContext, message: string): Promise<RuleOut
     inverse: result.inverse ? [result.inverse] : [],
     pending: null,
     state: "applied",
-    toolCalls: [{ name: "create_event", args: { domain: domainSlug, title, start: when.date.toISOString(), minutes } }],
+    toolCalls: [
+      {
+        name: "create_event",
+        args: {
+          domain: domainSlug,
+          title,
+          start: when.date.toISOString(),
+          end: when.endDate?.toISOString(),
+          minutes,
+          recurrence,
+        },
+      },
+    ],
   };
 }
 
@@ -337,18 +350,20 @@ async function handleTask(ctx: AgentContext, message: string): Promise<RuleOutco
   const domainSlug = detectDomain(message) ?? "admin";
   const title = titleCase(extractTitle(message, `${domainLabel(domainSlug)} task`));
   const due = parseWhen(message, ctx.now, ctx.user.timezone);
+  const isTopPriority = /\b(top priority|high priority|urgent|priority|starred)\b/i.test(message);
 
   const result = await createTask(ctx.user, {
     domainSlug,
     title,
     dueDate: due?.explicitDate ? due.date : null,
+    priority: isTopPriority ? 3 : 1,
   });
 
   if (!result.ok) return emptyOutcome("task", result.message ?? "I could not add that task.", domainSlug);
 
   const domain = DOMAIN_MAP[domainSlug];
   return {
-    reply: `Added “${result.task.title}” to ${domainLabel(domainSlug)}${
+    reply: `Added ${isTopPriority ? "top priority " : ""}task “${result.task.title}”${isTopPriority ? " ⭐" : ""} to ${domainLabel(domainSlug)}${
       due?.explicitDate ? `, due ${dayLabel(due.date, ctx.user.timezone)}` : ""
     }.`,
     intent: "task",
