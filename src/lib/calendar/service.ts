@@ -151,7 +151,10 @@ export async function getEvent(user: ServiceUser, eventId: string) {
 async function collectConflicts(
   user: ServiceUser,
   candidate: { id?: string; title: string; start: Date; end: Date; domainSlug: string; isProtected?: boolean },
+  ignoreIds: string[] = [],
 ): Promise<Conflict[]> {
+  const ignored = new Set(ignoreIds);
+  if (candidate.id) ignored.add(candidate.id);
   const pad = 2 * 24 * 60 * 60 * 1000;
   const nearby = await listEvents(user, {
     from: new Date(candidate.start.getTime() - pad),
@@ -165,7 +168,7 @@ async function collectConflicts(
 
   const plannedMinutesByDay: Record<string, number> = {};
   for (const event of nearby) {
-    if (event.id === candidate.id) continue;
+    if (ignored.has(event.id)) continue;
     const slug = event.domainSlug;
     if (UNPROTECTED_PREFIXES.includes(slug)) continue;
     const duration = minutesBetween(event.start, event.end);
@@ -188,7 +191,7 @@ async function collectConflicts(
       isProtected: candidate.isProtected,
     },
     existing: nearby
-      .filter((event) => event.id !== candidate.id)
+      .filter((event) => !ignored.has(event.id))
       .map((event) => ({
         id: event.id,
         title: event.title,
@@ -197,7 +200,7 @@ async function collectConflicts(
         domainSlug: event.domainSlug,
         isProtected: event.isProtected,
       })),
-    ignoreIds: candidate.id ? [candidate.id] : [],
+    ignoreIds: [...ignored],
     protectedWindows,
     bufferMinutes,
     plannedMinutesByDay,
@@ -259,8 +262,9 @@ function dayRangeKeys(start: Date, end: Date, timeZone: string): string[] {
 export async function previewConflicts(
   user: ServiceUser,
   candidate: { id?: string; title: string; start: Date; end: Date; domainSlug: string },
+  options: { ignoreIds?: string[] } = {},
 ): Promise<Conflict[]> {
-  return collectConflicts(user, candidate);
+  return collectConflicts(user, candidate, options.ignoreIds);
 }
 
 /* -------------------------------------------------------------------------- */

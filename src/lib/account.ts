@@ -6,6 +6,7 @@
  * realistic starter week so a fresh account is never an empty dashboard.
  */
 
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { DOMAINS, DOMAIN_MAP } from "@/lib/domains/catalog";
 import { addZonedDays, startOfWeekMonday, zonedToUtc } from "@/lib/time";
@@ -58,24 +59,23 @@ export async function ensureDomains(userId: string): Promise<void> {
 
   if (!missing.length) return;
 
-  await prisma.$transaction(
-    missing.map((domain) =>
-      prisma.domain.create({
-        data: {
-          userId,
-          slug: domain.slug,
-          name: domain.name,
-          accent: domain.accent,
-          icon: domain.icon,
-          tagline: domain.tagline,
-          goals: domain.goals,
-          isProtected: domain.protectedByDefault,
-          sortOrder: DOMAINS.findIndex((entry) => entry.slug === domain.slug),
-          agentPrompt: domain.guidance,
-        },
-      }),
-    ),
-  );
+  // `createMany` with skipDuplicates is atomic against the (userId, slug) unique
+  // key, so two requests bootstrapping the same account cannot collide.
+  await prisma.domain.createMany({
+    data: missing.map((domain) => ({
+      userId,
+      slug: domain.slug,
+      name: domain.name,
+      accent: domain.accent,
+      icon: domain.icon,
+      tagline: domain.tagline,
+      goals: domain.goals,
+      isProtected: domain.protectedByDefault,
+      sortOrder: DOMAINS.findIndex((entry) => entry.slug === domain.slug),
+      agentPrompt: domain.guidance,
+    })),
+    skipDuplicates: true,
+  });
 }
 
 export async function getProfile(userId: string): Promise<AccountProfile | null> {
@@ -245,9 +245,12 @@ export async function seedStarterWeek(userId: string): Promise<void> {
     ];
   });
 
+  // Two bulk inserts instead of one statement per row: the seeding round trip
+  // used to take ten-plus seconds over the pooled connection, which made the
+  // onboarding action fragile on slower links.
   await prisma.$transaction([
-    ...rows.map((row) => prisma.event.create({ data: row })),
-    ...taskRows.map((row) => prisma.task.create({ data: row })),
+    prisma.event.createMany({ data: rows }),
+    prisma.task.createMany({ data: taskRows }),
     prisma.user.update({ where: { id: userId }, data: { onboardedAt: new Date() } }),
   ]);
 }
@@ -278,17 +281,25 @@ export async function requireDomain(userId: string, slug: string) {
   const config = DOMAIN_MAP[slug];
   if (!config) return null;
 
-  return prisma.domain.create({
-    data: {
-      userId,
-      slug: config.slug,
-      name: config.name,
-      accent: config.accent,
-      icon: config.icon,
-      tagline: config.tagline,
-      goals: config.goals,
-      isProtected: config.protectedByDefault,
-      agentPrompt: config.guidance,
-    },
-  });
+  try {
+    return await prisma.domain.create({
+      data: {
+        userId,
+        slug: config.slug,
+        name: config.name,
+        accent: config.accent,
+        icon: config.icon,
+        tagline: config.tagline,
+        goals: config.goals,
+        isProtected: config.protectedByDefault,
+        agentPrompt: config.guidance,
+      },
+    });
+  } catch (error) {
+    // A parallel request created it first — return that row instead of failing.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return prisma.domain.findFirst({ where: { userId, slug } });
+    }
+    throw error;
+  }
 }

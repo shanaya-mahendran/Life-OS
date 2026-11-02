@@ -39,6 +39,15 @@ model User {
   agentLogs AgentLog[]
   briefs        Brief[]
   notifications Notification[]
+  resetPlans    ResetPlan[]
+  habits        Habit[]
+  goalTracks    GoalTrack[]
+  diaryEntries  DiaryEntry[]
+  diarySessions DiarySession[]
+  diaryArtifacts DiaryArtifact[]
+  diaryStamps   DiaryStamp[]
+  burnEntries   BurnEntry[]
+  diarySettings DiarySettings?
 
   @@map("users")
 }
@@ -205,3 +214,416 @@ model Notification {
   @@map("notifications")
 }
 
+/* -------------------------------------------------------------------------- */
+/* Reset Plan & Habit Tracker (additive — no existing table is altered)        */
+/* -------------------------------------------------------------------------- */
+
+model ResetPlan {
+  id String @id @default(cuid())
+  userId String
+  // draft | active | paused | completed
+  status String @default("draft")
+  startedAt DateTime?
+  completedAt DateTime?
+  currentPhase Int @default(1)
+  unlockedPhase Int @default(1)
+  // suggest | auto_small
+  autonomy String @default("suggest")
+  checkinTime String @default("20:00")
+  // standard | lighter
+  pace String @default("standard")
+  sendAnswersToAi Boolean @default(true)
+  notifyCheckin Boolean @default(true)
+  notifyReviews Boolean @default(true)
+  notifyReports Boolean @default(true)
+  notifyDrift Boolean @default(true)
+  gapReport Json @default("{}")
+  gapApprovedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answers       ResetAnswer[]
+  commitments   ResetCommitment[]
+  checkins      ResetCheckin[]
+  notebooks     ResetNotebook[]
+  reports       ResetPeriodReport[]
+  notifications ResetNotification[]
+  calendarEvents ResetPlanEvent[]
+  habits        Habit[]
+  goalTracks    GoalTrack[]
+
+  @@index([userId, status])
+  @@map("reset_plans")
+}
+
+model ResetAnswer {
+  id String @id @default(cuid())
+  planId String
+  userId String
+  step Int
+  prompt String @default("")
+  answer String @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  plan ResetPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, step])
+  @@index([userId])
+  @@map("reset_answers")
+}
+
+model ResetCommitment {
+  id String @id @default(cuid())
+  planId String
+  userId String
+  phase Int @default(1)
+  // cut | anchor | routine | nonnegotiable | goal | challenge
+  kind String
+  title String
+  notes String @default("")
+  domainSlug String @default("planning")
+  // daily | weekly
+  cadence String @default("daily")
+  weekday Int?
+  time String @default("09:00")
+  durationMinutes Int @default(30)
+  calendarEnabled Boolean @default(true)
+  // finances | productivity | personal
+  goalArea String?
+  metric String @default("")
+  unit String @default("")
+  targetValue Float?
+  sortOrder Int @default(0)
+  status String @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  plan       ResetPlan        @relation(fields: [planId], references: [id], onDelete: Cascade)
+  checkins   ResetCheckin[]
+  habit      Habit?
+  goalTrack  GoalTrack?
+  calendarEvents ResetPlanEvent[]
+
+  @@index([planId, phase])
+  @@index([userId])
+  @@map("reset_commitments")
+}
+
+model ResetCheckin {
+  id String @id @default(cuid())
+  planId String
+  userId String
+  commitmentId String
+  date DateTime
+  // done | skipped | missed
+  result String
+  note String @default("")
+  createdAt DateTime @default(now())
+
+  plan       ResetPlan       @relation(fields: [planId], references: [id], onDelete: Cascade)
+  commitment ResetCommitment @relation(fields: [commitmentId], references: [id], onDelete: Cascade)
+
+  @@unique([commitmentId, date])
+  @@index([planId, date])
+  @@index([userId, date])
+  @@map("reset_checkins")
+}
+
+model ResetNotebook {
+  id String @id @default(cuid())
+  planId String
+  userId String
+  kind String @default("review15")
+  reviewDay Int
+  periodStart DateTime
+  periodEnd DateTime
+  q1 String @default("")
+  q2 String @default("")
+  q3 String @default("")
+  summary String @default("")
+  proposedFocus String @default("")
+  skipped Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  plan ResetPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, reviewDay])
+  @@index([userId])
+  @@map("reset_notebooks")
+}
+
+model ResetPeriodReport {
+  id String @id @default(cuid())
+  planId String
+  userId String
+  // review15 | month | final
+  kind String
+  reviewDay Int
+  periodStart DateTime
+  periodEnd DateTime
+  metrics Json @default("{}")
+  summary String @default("")
+  editedByUser Boolean @default(false)
+  // draft | ready
+  status String @default("draft")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  plan ResetPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, kind, periodStart])
+  @@index([userId])
+  @@map("reset_period_reports")
+}
+
+model ResetNotification {
+  id String @id @default(cuid())
+  planId String
+  userId String
+  // checkin | review | report | drift
+  kind String
+  dueAt DateTime
+  sentAt DateTime?
+  // scheduled | sent | snoozed | off
+  status String @default("sent")
+  createdAt DateTime @default(now())
+
+  plan ResetPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, kind, dueAt])
+  @@index([userId, createdAt])
+  @@map("reset_notifications")
+}
+
+model ResetPlanEvent {
+  id String @id @default(cuid())
+  planId String
+  userId String
+  commitmentId String?
+  eventId String @unique
+  batchId String
+  createdAt DateTime @default(now())
+
+  plan       ResetPlan        @relation(fields: [planId], references: [id], onDelete: Cascade)
+  commitment ResetCommitment? @relation(fields: [commitmentId], references: [id], onDelete: Cascade)
+
+  @@index([planId, batchId])
+  @@map("reset_plan_events")
+}
+
+model Habit {
+  id String @id @default(cuid())
+  userId String
+  planId String?
+  commitmentId String? @unique
+  title String
+  notes String @default("")
+  // manual | reset_plan
+  source String @default("manual")
+  domainSlug String @default("habits")
+  // daily | weekly
+  cadence String @default("daily")
+  weekday Int?
+  status String @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan       ResetPlan?      @relation(fields: [planId], references: [id], onDelete: Cascade)
+  commitment ResetCommitment? @relation(fields: [commitmentId], references: [id], onDelete: Cascade)
+  entries    HabitEntry[]
+
+  @@index([userId, status])
+  @@map("habits")
+}
+
+model HabitEntry {
+  id String @id @default(cuid())
+  habitId String
+  userId String
+  date DateTime
+  // done | skipped | missed
+  result String
+  note String @default("")
+  createdAt DateTime @default(now())
+
+  habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@unique([habitId, date])
+  @@index([userId, date])
+  @@map("habit_entries")
+}
+
+model GoalTrack {
+  id String @id @default(cuid())
+  userId String
+  planId String?
+  commitmentId String? @unique
+  title String
+  goalArea String @default("personal")
+  metric String @default("")
+  unit String @default("")
+  targetValue Float
+  // per week | per day | total
+  cadence String @default("week")
+  status String @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan       ResetPlan?      @relation(fields: [planId], references: [id], onDelete: Cascade)
+  commitment ResetCommitment? @relation(fields: [commitmentId], references: [id], onDelete: Cascade)
+  progress   GoalProgress[]
+
+  @@index([userId, status])
+  @@map("goal_tracks")
+}
+
+model GoalProgress {
+  id String @id @default(cuid())
+  goalTrackId String
+  userId String
+  date DateTime
+  value Float
+  note String @default("")
+  createdAt DateTime @default(now())
+
+  goalTrack GoalTrack @relation(fields: [goalTrackId], references: [id], onDelete: Cascade)
+
+  @@unique([goalTrackId, date])
+  @@index([userId, date])
+  @@map("goal_progress")
+}
+
+/* -------------------------------------------------------------------------- */
+/* Diary Mode (additive — no existing table is altered)                        */
+/* -------------------------------------------------------------------------- */
+
+model DiaryEntry {
+  id                 String   @id @default(cuid())
+  userId             String
+  // Plain markdown-ish text, or AES-GCM ciphertext when `encrypted` is true.
+  body               String   @default("")
+  encrypted          Boolean  @default(false)
+  // "YYYY-MM-DD" in the user's timezone — groups entries by writing day.
+  entryDate          String
+  tags               Json     @default("[]")
+  // Ambient layer output (cached — the model is never called twice for an entry).
+  moodColors         Json     @default("[]")
+  stamps             Json     @default("[]")
+  silverLining       String   @default("")
+  silverLiningDeleted Boolean @default(false)
+  spark              String   @default("")
+  ambientAt          DateTime?
+  // "ok" | "failed" | "off" — why the ambient layer is missing, for honest UI.
+  ambientStatus      String   @default("pending")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions   DiarySession[]
+  stampsRows DiaryStamp[]
+
+  @@index([userId, entryDate])
+  @@index([userId, createdAt])
+  @@map("diary_entries")
+}
+
+model DiarySession {
+  id        String   @id @default(cuid())
+  userId    String
+  entryId   String
+  // alter_ego | devils_advocate | collaborator
+  mode      String
+  persona   String   @default("stoic")
+  maxTurns  Int      @default(6)
+  // [{ role: "user" | "coach", content: string, at: string }]
+  turns     Json     @default("[]")
+  // active | ended
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entry DiaryEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([entryId])
+  @@map("diary_sessions")
+}
+
+model DiaryArtifact {
+  id        String   @id @default(cuid())
+  userId    String
+  // trend_card | blind_spot | monthly_story | pinned_seed
+  kind      String
+  body      String
+  meta      Json     @default("{}")
+  // Entry ids this artifact was derived from.
+  sourceIds Json     @default("[]")
+  // active | dismissed
+  status    String   @default("active")
+  // Covers trend cards and monthly stories.
+  periodKey String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, kind, periodKey])
+  @@index([userId, kind, status])
+  @@map("diary_artifacts")
+}
+
+model DiaryStamp {
+  id        String   @id @default(cuid())
+  userId    String
+  entryId   String
+  emoji     String
+  date      DateTime
+  createdAt DateTime @default(now())
+
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entry DiaryEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@unique([entryId, emoji])
+  @@index([userId, date])
+  @@map("diary_stamps")
+}
+
+model BurnEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  // Only the takeaway survives — the entry text never lands in this table.
+  takeaway  String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("burn_entries")
+}
+
+model DiarySettings {
+  userId     String   @id
+  ambientOn  Boolean  @default(true)
+  trendsOn   Boolean  @default(true)
+  sparkOn    Boolean  @default(true)
+  // When off, entry text is never sent to a model at all.
+  sendTextToAi Boolean @default(true)
+  // Client-side encryption: the passphrase never reaches this table.
+  encryptionOn Boolean @default(false)
+  encryptionSalt String @default("")
+  recoveryHint String  @default("")
+  // Set by the safety guard — pauses diary AI for the rest of the day.
+  pausedUntil DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("diary_settings")
+}

@@ -17,6 +17,25 @@ LifeOS Agent is a modern Next.js web application built with TypeScript, React 19
 - **Full Undo/Redo Audit Trail**: Every automated schedule mutation is logged and reversible with one click.
 - **Master Calendar & Today Dashboard**: Clean multi-view agenda, day schedule, and quick-add actions.
 
+### Sections in the sidebar
+
+The app now carries two first-class sections beside the domains. Each one sits behind its own flag and returns 404 when disabled, so turning a flag off restores the exact previous behaviour.
+
+| Section | Flag | Routes |
+|---|---|---|
+| Reset Plan (90-day program) | `RESET_PLAN_ENABLED` | `/reset`, `/reset/audit`, `/reset/gap`, `/reset/builder`, `/reset/plan`, `/reset/notebook`, `/reset/reports`, `/reset/finish`, `/reset/settings` |
+| Habit Tracker | `HABIT_TRACKER_ENABLED` | `/habits`, `/habits/goals/[id]` |
+| Diary Mode | `DIARY_ENABLED` | `/diary`, `/diary/entry/[id]`, `/diary/session/[id]`, `/diary/burn`, `/diary/stories`, `/diary/settings` |
+
+**Diary Mode** keeps the AI quiet: one cached structured call per entry returns two mood colours, three emoji stamps, a one-line silver lining and the next day's spark. Deep modes (alter-ego, Devil's Advocate, Creative Collaborator) run only when opened, are capped at a fixed number of turns, and store a transcript you can delete. The Burn Diary never persists the original text — only the takeaway is written. Locked entries are AES-GCM ciphertext produced in the browser; the passphrase never reaches the server.
+
+```bash
+# apply the additive diary tables (six new tables, no existing table altered)
+npm run db:push
+```
+
+Optional environment variables: `DIARY_ENABLED` / `NEXT_PUBLIC_DIARY_ENABLED` (`false` hides the section), `DIARY_AI_ENABLED=false` (keeps the diary, disables every model call), and `DIARY_MODEL` (defaults to `GROQ_MODEL`). With no key configured the diary still saves; the page simply stays neutral.
+
 ---
 
 ## Getting Started Locally
@@ -44,6 +63,12 @@ LifeOS Agent is a modern Next.js web application built with TypeScript, React 19
    ```bash
    npm test
    ```
+
+6. **Cron endpoints** (protected by `CRON_SECRET`):
+   Vercel's free plan allows only two cron jobs, so `vercel.json` schedules exactly two and the daily job drives the rest:
+   - `/api/cron/brief` (daily) — morning briefs, then reset check-ins/reviews, plus diary trends on Mondays and the monthly reset report + diary story on the 1st.
+   - `/api/cron/review` (Sundays) — weekly review.
+   - These stay available for manual runs or paid plans with more jobs: `/api/cron/reset-daily`, `/api/cron/reset-review`, `/api/cron/reset-month`, `/api/cron/diary-trends`, `/api/cron/diary-month`.
 
 ---
 

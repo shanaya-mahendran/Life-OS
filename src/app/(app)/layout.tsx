@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireProfile } from "@/lib/auth";
 import { AppShell } from "@/components/shell/AppShell";
+import { resetFeatures } from "@/lib/reset/flags";
+import { diaryEnabled } from "@/lib/diary/flags";
 import { addZonedDays, startOfZonedDay } from "@/lib/time";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -37,6 +39,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       domains={domains}
       adherence={adherence}
       notificationCount={notificationCount}
+      features={{ ...resetFeatures(), diary: diaryEnabled() }}
     >
       {children}
     </AppShell>

@@ -56,6 +56,10 @@ Add the following environment variables under **Settings → Environment Variabl
 | `DEEPSEEK_MODEL` | DeepSeek Model | `deepseek-chat` |
 | `CRON_SECRET` | Secret token for Vercel Cron jobs | Generate random hex: `openssl rand -hex 32` |
 | `MONTHLY_TOKEN_BUDGET` | Max LLM tokens per user per month | `2000000` |
+| `RESET_PLAN_ENABLED` / `HABIT_TRACKER_ENABLED` | Show the Reset Plan and Habit Tracker sections | `true` (set `false` to hide) |
+| `DIARY_ENABLED` | Show the Diary section | `true` (set `false` to hide) |
+| `DIARY_AI_ENABLED` | Master switch for every diary model call | `true` |
+| `DIARY_MODEL` | Optional model override for the diary layer | defaults to `GROQ_MODEL` |
 
 > [!NOTE]
 > Ensure special characters in the database password (such as `'`, `"`, `,`) are URL-encoded (`%27`, `%22`, `%2C`) in `DATABASE_URL` and `DIRECT_URL`.
@@ -84,5 +88,7 @@ In the [Supabase Dashboard](https://supabase.com/dashboard):
 - **Vercel Crons**: `vercel.json` automatically schedules:
   - Daily Morning Brief: `/api/cron/brief` (01:00 UTC)
   - Sunday Weekly Review: `/api/cron/review` (14:00 UTC)
+
+  The free plan allows only **two** cron jobs, so the daily brief job also runs the Reset check-in/review sweep, the diary trend draft on Mondays and, on the 1st, the monthly reset report and diary story. The dedicated endpoints (`/api/cron/reset-*`, `/api/cron/diary-*`) still exist for manual runs or a plan that allows more jobs — add them to `vercel.json` only if your plan supports it.
   Vercel automatically sends `Authorization: Bearer <CRON_SECRET>` for scheduled triggers.
 - **Resilient AI Execution**: If DeepSeek experiences rate limits or balance limits, LifeOS seamlessly degrades to its deterministic scheduling rules engine without crashing.

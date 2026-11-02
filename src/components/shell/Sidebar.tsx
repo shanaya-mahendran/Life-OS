@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronRight, LogOut, X } from "lucide-react";
+import { Activity, BookOpen, ChevronRight, LogOut, RotateCcw, X } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { NAV_ITEMS } from "./nav";
 import { cn, withAlpha } from "@/lib/utils";
@@ -16,15 +16,25 @@ export interface SidebarDomain {
   isProtected: boolean;
 }
 
+export interface SidebarFeatures {
+  resetPlan: boolean;
+  habitTracker: boolean;
+  diary: boolean;
+}
+
 interface SidebarProps {
   domains: SidebarDomain[];
   adherence: number;
   mobileOpen: boolean;
   onClose: () => void;
+  features?: SidebarFeatures;
 }
 
-export function Sidebar({ domains, adherence, mobileOpen, onClose }: SidebarProps) {
+export function Sidebar({ domains, adherence, mobileOpen, onClose, features }: SidebarProps) {
   const pathname = usePathname();
+  const showReset = features?.resetPlan ?? false;
+  const showHabits = features?.habitTracker ?? false;
+  const showDiary = features?.diary ?? false;
 
   const content = (
     <div className="flex h-full flex-col gap-5 border-r border-white/[0.06] bg-[linear-gradient(180deg,rgba(15,10,30,0.96),rgba(8,6,18,0.98))] px-4 pb-5 pt-5">
@@ -63,6 +73,104 @@ export function Sidebar({ domains, adherence, mobileOpen, onClose }: SidebarProp
         })}
       </nav>
 
+      {(showReset || showHabits || showDiary) && (
+        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-1.5">
+          <div className="flex items-center justify-between px-2 pb-1 pt-1">
+            <span className="text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-white/30">
+              Your systems
+            </span>
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/70 shadow-[0_0_8px_rgba(52,211,153,0.7)]" />
+          </div>
+
+          {showReset && (
+            <Link
+              href="/reset"
+              onClick={onClose}
+              className={cn(
+                "group flex min-h-[44px] items-center gap-2.5 rounded-xl px-2.5 py-2 transition",
+                pathname === "/reset" || pathname.startsWith("/reset/")
+                  ? "bg-gradient-to-r from-violet-600/30 to-transparent text-white"
+                  : "text-white/55 hover:bg-white/[0.05] hover:text-white/90",
+              )}
+            >
+              <span
+                className={cn(
+                  "grid h-7 w-7 shrink-0 place-items-center rounded-lg border",
+                  pathname.startsWith("/reset")
+                    ? "border-violet-400/40 bg-violet-500/20 text-violet-200"
+                    : "border-white/10 bg-white/[0.04] text-white/40 group-hover:text-violet-200",
+                )}
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[0.8rem] font-semibold">Reset Plan</span>
+                <span className="block truncate text-[0.6rem] text-white/30">90 days, one program</span>
+              </span>
+              <ChevronRight className="h-3 w-3 shrink-0 text-white/0 transition group-hover:text-white/30" />
+            </Link>
+          )}
+
+          {showHabits && (
+            <Link
+              href="/habits"
+              onClick={onClose}
+              className={cn(
+                "group flex min-h-[44px] items-center gap-2.5 rounded-xl px-2.5 py-2 transition",
+                pathname === "/habits" || pathname.startsWith("/habits/")
+                  ? "bg-gradient-to-r from-emerald-600/25 to-transparent text-white"
+                  : "text-white/55 hover:bg-white/[0.05] hover:text-white/90",
+              )}
+            >
+              <span
+                className={cn(
+                  "grid h-7 w-7 shrink-0 place-items-center rounded-lg border",
+                  pathname.startsWith("/habits")
+                    ? "border-emerald-400/40 bg-emerald-500/15 text-emerald-200"
+                    : "border-white/10 bg-white/[0.04] text-white/40 group-hover:text-emerald-200",
+                )}
+              >
+                <Activity className="h-3.5 w-3.5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[0.8rem] font-semibold">Habit Tracker</span>
+                <span className="block truncate text-[0.6rem] text-white/30">Streaks &amp; goal progress</span>
+              </span>
+              <ChevronRight className="h-3 w-3 shrink-0 text-white/0 transition group-hover:text-white/30" />
+            </Link>
+          )}
+
+          {showDiary && (
+            <Link
+              href="/diary"
+              onClick={onClose}
+              className={cn(
+                "group flex min-h-[44px] items-center gap-2.5 rounded-xl px-2.5 py-2 transition",
+                pathname === "/diary" || pathname.startsWith("/diary/")
+                  ? "bg-gradient-to-r from-amber-600/25 to-transparent text-white"
+                  : "text-white/55 hover:bg-white/[0.05] hover:text-white/90",
+              )}
+            >
+              <span
+                className={cn(
+                  "grid h-7 w-7 shrink-0 place-items-center rounded-lg border",
+                  pathname.startsWith("/diary")
+                    ? "border-amber-400/40 bg-amber-500/15 text-amber-200"
+                    : "border-white/10 bg-white/[0.04] text-white/40 group-hover:text-amber-200",
+                )}
+              >
+                <BookOpen className="h-3.5 w-3.5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[0.8rem] font-semibold">Diary</span>
+                <span className="block truncate text-[0.6rem] text-white/30">Private pages &amp; mirrors</span>
+              </span>
+              <ChevronRight className="h-3 w-3 shrink-0 text-white/0 transition group-hover:text-white/30" />
+            </Link>
+          )}
+        </div>
+      )}
+
       <div className="min-h-0 flex-1">
         <div className="mb-2 flex items-center justify-between px-2">
           <span className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-white/30">
@@ -70,7 +178,7 @@ export function Sidebar({ domains, adherence, mobileOpen, onClose }: SidebarProp
           </span>
           <span className="text-[0.6rem] text-white/20">all on</span>
         </div>
-        <div className="scroll-thin max-h-[calc(100dvh-27rem)] space-y-0.5 overflow-y-auto pr-1 lg:max-h-[calc(100dvh-24rem)]">
+        <div className="scroll-thin max-h-[calc(100dvh-31.5rem)] space-y-0.5 overflow-y-auto pr-1 lg:max-h-[calc(100dvh-28.5rem)]">
           {domains.map((domain) => {
             const active = pathname === `/domains/${domain.slug}`;
             return (

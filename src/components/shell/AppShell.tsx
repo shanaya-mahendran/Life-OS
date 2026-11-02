@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Sidebar, type SidebarDomain } from "./Sidebar";
+import { Sidebar, type SidebarDomain, type SidebarFeatures } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { MobileTabs, ChatFab } from "./MobileTabs";
 import { CommandPalette } from "./CommandPalette";
@@ -14,10 +14,11 @@ interface AppShellProps {
   domains: SidebarDomain[];
   adherence: number;
   notificationCount: number;
+  features?: SidebarFeatures;
   children: React.ReactNode;
 }
 
-export function AppShell({ userName, domains, adherence, notificationCount, children }: AppShellProps) {
+export function AppShell({ userName, domains, adherence, notificationCount, features, children }: AppShellProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -56,6 +57,7 @@ export function AppShell({ userName, domains, adherence, notificationCount, chil
         adherence={adherence}
         mobileOpen={menuOpen}
         onClose={() => setMenuOpen(false)}
+        features={features}
       />
 
       <div className="relative flex min-w-0 flex-1 flex-col">

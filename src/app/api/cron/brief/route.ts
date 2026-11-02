@@ -4,6 +4,8 @@ import { saveBrief } from "@/lib/calendar/service";
 import { briefDateKey, buildMorningBrief } from "@/lib/briefs";
 import { serviceUserFromRow } from "@/lib/account";
 import { createSystemNotification } from "@/lib/notifications";
+import { runResetCron } from "@/lib/reset/cron";
+import { runDiaryMonthly, runDiaryTrends } from "@/lib/diary/service";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -71,5 +73,42 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, briefed: results.length, results });
+  // Vercel's free plan allows two cron jobs, so this daily job also drives the
+  // Reset Plan and Diary schedules. Each block is isolated: a failing module
+  // must never stop the morning briefs.
+  const extra: Record<string, unknown> = {};
+  const isMonday = now.getUTCDay() === 1;
+  const isFirstOfMonth = now.getUTCDate() === 1;
+
+  // Stop starting new sweeps well before the platform timeout so a large
+  // account base never kills the job mid-run; the next day picks it up.
+  const startedAt = Date.now();
+  const budgetLeft = (reserveMs: number) => Date.now() - startedAt < maxDuration * 1000 - reserveMs;
+
+  if (budgetLeft(22_000)) {
+    try {
+      extra.resetDaily = await runResetCron("daily");
+      extra.resetReview = await runResetCron("review");
+      if (isFirstOfMonth) extra.resetMonth = await runResetCron("month");
+    } catch (error) {
+      console.error("[lifeos] reset cron inside brief failed", error);
+      extra.resetFailed = true;
+    }
+  } else {
+    extra.resetSkipped = "out of time";
+  }
+
+  if (budgetLeft(14_000)) {
+    try {
+      if (isMonday) extra.diaryTrends = await runDiaryTrends(now);
+      if (isFirstOfMonth) extra.diaryMonth = await runDiaryMonthly(now);
+    } catch (error) {
+      console.error("[lifeos] diary cron inside brief failed", error);
+      extra.diaryFailed = true;
+    }
+  } else {
+    extra.diarySkipped = "out of time";
+  }
+
+  return NextResponse.json({ ok: true, briefed: results.length, results, ...extra });
 }
