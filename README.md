@@ -4,6 +4,8 @@
 
 LifeOS Agent is a modern Next.js web application built with TypeScript, React 19, Tailwind CSS, Supabase, Prisma, and DeepSeek AI.
 
+For a fuller, source-oriented inventory of implemented functionality, optional modules, integrations, and known limits, see the [project functionality report](./report.md).
+
 ---
 
 ## Features
@@ -19,7 +21,7 @@ LifeOS Agent is a modern Next.js web application built with TypeScript, React 19
 
 ### Sections in the sidebar
 
-The app now carries two first-class sections beside the domains. Each one sits behind its own flag and returns 404 when disabled, so turning a flag off restores the exact previous behaviour.
+The app also includes three optional first-class sections beside the domains. Each one sits behind its own flag and returns 404 when disabled, so turning a flag off restores the exact previous behaviour.
 
 | Section | Flag | Routes |
 |---|---|---|
