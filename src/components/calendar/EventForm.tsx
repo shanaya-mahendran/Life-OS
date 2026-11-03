@@ -5,6 +5,7 @@ import { Loader2, TriangleAlert } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { DOMAINS } from "@/lib/domains/catalog";
 import type { UiConflict, UiEvent } from "@/lib/dto";
+import { domainFamilyColor } from "@/lib/domains/presentation";
 import { withAlpha } from "@/lib/utils";
 import { zonedToUtc } from "@/lib/time";
 import { dayLabel } from "./calendar-utils";
@@ -189,21 +190,24 @@ export function EventForm({
         <div className="space-y-1.5">
           <span className="label">Domain</span>
           <div className="flex flex-wrap gap-1.5">
-            {domains.map((domain) => (
-              <button
-                key={domain.slug}
-                type="button"
-                onClick={() => setDomainSlug(domain.slug)}
-                className="rounded-full border px-2.5 py-1 text-[0.68rem] font-medium transition"
-                style={{
-                  borderColor: withAlpha(domain.accent, domainSlug === domain.slug ? 0.9 : 0.25),
-                  backgroundColor: withAlpha(domain.accent, domainSlug === domain.slug ? 0.25 : 0.08),
-                  color: domainSlug === domain.slug ? "#fff" : withAlpha(domain.accent, 0.9),
-                }}
-              >
-                {domain.name}
-              </button>
-            ))}
+            {domains.map((domain) => {
+              const accent = domainFamilyColor(domain.slug, domain.accent);
+              return (
+                <button
+                  key={domain.slug}
+                  type="button"
+                  onClick={() => setDomainSlug(domain.slug)}
+                  className="rounded-full border px-2.5 py-1 text-[0.68rem] font-medium transition"
+                  style={{
+                    borderColor: withAlpha(accent, domainSlug === domain.slug ? 0.9 : 0.25),
+                    backgroundColor: withAlpha(accent, domainSlug === domain.slug ? 0.25 : 0.08),
+                    color: domainSlug === domain.slug ? "#fff" : withAlpha(accent, 0.9),
+                  }}
+                >
+                  {domain.name}
+                </button>
+              );
+            })}
           </div>
         </div>
 

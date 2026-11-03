@@ -38,7 +38,10 @@ export function NotificationDrawer({ open, onClose, onCountChange }: Notificatio
   const router = useRouter();
   const [notifications, setNotifications] = useState<UiNotification[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [actionBusyId, setActionBusyId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionErrorId, setActionErrorId] = useState<string | null>(null);
   const [perm, setPerm] = useState<NotificationPermission>("default");
   const [, startTransition] = useTransition();
 
@@ -81,14 +84,14 @@ export function NotificationDrawer({ open, onClose, onCountChange }: Notificatio
   async function fetchNotifications() {
     try {
       setLoading(true);
+      setLoadError(null);
       const res = await fetch("/api/notifications");
       const data = await res.json();
-      if (data.ok) {
-        setNotifications(data.notifications ?? []);
-        onCountChange?.(data.unreadCount ?? 0);
-      }
-    } catch {
-      // ignore network errors
+      if (!res.ok || !data.ok) throw new Error(data.error ?? "Could not load notifications.");
+      setNotifications(data.notifications ?? []);
+      onCountChange?.(data.unreadCount ?? 0);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Could not load notifications.");
     } finally {
       setLoading(false);
     }
@@ -116,6 +119,8 @@ export function NotificationDrawer({ open, onClose, onCountChange }: Notificatio
 
   async function handleConfirm(notificationId: string, achieved: boolean) {
     setActionBusyId(notificationId);
+    setActionError(null);
+    setActionErrorId(null);
     try {
       const res = await fetch("/api/notifications", {
         method: "POST",
@@ -123,14 +128,16 @@ export function NotificationDrawer({ open, onClose, onCountChange }: Notificatio
         body: JSON.stringify({ notificationId, achieved }),
       });
       const data = await res.json();
-      if (data.ok) {
-        setNotifications((current) =>
-          current.map((n) =>
-            n.id === notificationId ? { ...n, status: achieved ? "confirmed_achieved" : "confirmed_missed" } : n,
-          ),
-        );
-        startTransition(() => router.refresh());
-      }
+      if (!res.ok || !data.ok) throw new Error(data.error ?? "Could not save this check-in.");
+      setNotifications((current) =>
+        current.map((n) =>
+          n.id === notificationId ? { ...n, status: achieved ? "confirmed_achieved" : "confirmed_missed" } : n,
+        ),
+      );
+      startTransition(() => router.refresh());
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Could not save this check-in.");
+      setActionErrorId(notificationId);
     } finally {
       setActionBusyId(null);
     }
@@ -220,6 +227,14 @@ export function NotificationDrawer({ open, onClose, onCountChange }: Notificatio
 
         {/* Content list */}
         <div className="flex-1 overflow-y-auto py-3 space-y-2.5">
+          {loadError && (
+            <div role="alert" className="rounded-xl border border-rose-400/20 bg-rose-500/[0.08] p-3 text-sm text-rose-100">
+              <p>{loadError}</p>
+              <button type="button" onClick={() => void fetchNotifications()} className="mt-2 text-xs underline">
+                Try again
+              </button>
+            </div>
+          )}
           {loading && notifications.length === 0 ? (
             <div className="grid h-40 place-items-center text-white/40">
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -237,11 +252,11 @@ export function NotificationDrawer({ open, onClose, onCountChange }: Notificatio
           ) : (
             notifications.map((item) => {
               const isUnread = item.status === "unread";
-              const isAchievementCheck = item.type === "after_15m";
+              const isAchievementCheck = item.type.startsWith("after_15m");
               const isMorning = item.type === "morning_brief";
               const isReview = item.type === "review";
-              const is30m = item.type === "before_30m";
-              const is15m = item.type === "before_15m";
+              const is30m = item.type.startsWith("before_30m");
+              const is15m = item.type.startsWith("before_15m");
               const isBusy = actionBusyId === item.id;
 
               return (
@@ -320,6 +335,9 @@ export function NotificationDrawer({ open, onClose, onCountChange }: Notificatio
                                 Missed
                               </button>
                             </div>
+                          )}
+                          {actionError && actionErrorId === item.id && (
+                            <p role="alert" className="mt-2 text-xs text-rose-200">{actionError}</p>
                           )}
                         </div>
                       )}

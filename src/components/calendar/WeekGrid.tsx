@@ -197,8 +197,18 @@ export function WeekGrid({
                         <span className="truncate text-[0.7rem] font-semibold leading-tight text-white/95">
                           {event.title}
                         </span>
+                        {event.achievementStatus && (
+                          <span
+                            className={`ml-auto shrink-0 text-[0.55rem] font-semibold ${
+                              event.achievementStatus === "achieved" ? "text-emerald-200" : "text-rose-200"
+                            }`}
+                            aria-label={event.achievementStatus === "achieved" ? "Achieved" : "Not achieved"}
+                          >
+                            {event.achievementStatus === "achieved" ? "Done" : "Missed"}
+                          </span>
+                        )}
                         {short && (
-                          <span className="ml-auto shrink-0 text-[0.58rem] font-medium text-white/50">
+                          <span className="shrink-0 text-[0.58rem] font-medium text-white/50">
                             {duration}m
                           </span>
                         )}

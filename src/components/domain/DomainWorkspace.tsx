@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Loader2, Plus, Save, Star, Target, Trash2, Zap } from "lucide-react";
 import { withAlpha } from "@/lib/utils";
+import { domainFamilyColor } from "@/lib/domains/presentation";
 import { TaskChecklist, type ChecklistTask } from "@/components/today/TaskChecklist";
 import { ToastStack, type ToastMessage } from "@/components/ui/Toast";
 
@@ -25,6 +26,7 @@ type Tab = "goals" | "tasks" | "notes";
 let toastId = 0;
 
 export function DomainWorkspace({ domain, tasks, eventTypes }: DomainWorkspaceProps) {
+  const accent = domainFamilyColor(domain.slug, domain.accent);
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("goals");
   const [goals, setGoals] = useState(domain.goals);
@@ -169,9 +171,9 @@ export function DomainWorkspace({ domain, tasks, eventTypes }: DomainWorkspacePr
             style={
               tab === entry.key
                 ? {
-                    backgroundColor: withAlpha(domain.accent, 0.22),
+                    backgroundColor: withAlpha(accent, 0.22),
                     color: "#fff",
-                    boxShadow: `inset 0 0 0 1px ${withAlpha(domain.accent, 0.45)}`,
+                    boxShadow: `inset 0 0 0 1px ${withAlpha(accent, 0.45)}`,
                   }
                 : { color: "rgba(255,255,255,0.45)" }
             }
@@ -198,13 +200,13 @@ export function DomainWorkspace({ domain, tasks, eventTypes }: DomainWorkspacePr
                 key={`${goal}-${index}`}
                 className="group flex items-center gap-2.5 rounded-xl border px-3 py-2"
                 style={{
-                  borderColor: withAlpha(domain.accent, 0.22),
-                  backgroundColor: withAlpha(domain.accent, 0.07),
+                  borderColor: withAlpha(accent, 0.22),
+                  backgroundColor: withAlpha(accent, 0.07),
                 }}
               >
                 <span
                   className="grid h-5 w-5 shrink-0 place-items-center rounded-full text-white"
-                  style={{ backgroundColor: withAlpha(domain.accent, 0.55) }}
+                  style={{ backgroundColor: withAlpha(accent, 0.55) }}
                 >
                   <Target className="h-3 w-3" />
                 </span>
@@ -329,9 +331,9 @@ export function DomainWorkspace({ domain, tasks, eventTypes }: DomainWorkspacePr
               disabled={busyBlock !== null}
               className="rounded-full border px-2.5 py-1 text-[0.68rem] font-medium transition hover:brightness-125 disabled:opacity-50"
               style={{
-                borderColor: withAlpha(domain.accent, 0.35),
-                backgroundColor: withAlpha(domain.accent, 0.12),
-                color: withAlpha(domain.accent, 0.95),
+                borderColor: withAlpha(accent, 0.35),
+                backgroundColor: withAlpha(accent, 0.12),
+                color: withAlpha(accent, 0.95),
               }}
             >
               {busyBlock === type.title ? (

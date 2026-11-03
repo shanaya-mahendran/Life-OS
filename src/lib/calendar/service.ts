@@ -117,7 +117,30 @@ export async function listEvents(
     }
   }
 
-  return expanded.sort((a, b) => a.start.getTime() - b.start.getTime());
+  const sortedEvents = expanded.sort((a, b) => a.start.getTime() - b.start.getTime());
+  const eventIds = [...new Set(sortedEvents.map((event) => event.id))];
+  if (!eventIds.length) return sortedEvents;
+
+  const checkIns = await prisma.notification.findMany({
+    where: {
+      userId: user.id,
+      eventId: { in: eventIds },
+      OR: [{ type: "after_15m" }, { type: { startsWith: "after_15m:" } }],
+    },
+    select: { eventId: true, type: true, status: true },
+  });
+  const outcomeByOccurrence = new Map(
+    checkIns.map((checkIn) => [`${checkIn.eventId}:${checkIn.type}`, checkIn.status]),
+  );
+
+  return sortedEvents.map((event) => {
+    const type = event.recurrence ? `after_15m:${dayKey(event.start, user.timezone)}` : "after_15m";
+    const outcome = outcomeByOccurrence.get(`${event.id}:${type}`);
+    return {
+      ...event,
+      achievementStatus: outcome === "confirmed_achieved" ? "achieved" : outcome === "confirmed_missed" ? "missed" : null,
+    };
+  });
 }
 
 export async function listTasks(

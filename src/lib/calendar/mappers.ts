@@ -38,6 +38,7 @@ export function toCalendarEvent(row: EventWithDomain): CalendarEvent {
     end: row.end,
     allDay: row.allDay,
     status: row.status as EventStatus,
+    achievementStatus: null,
     source: row.source as EventSource,
     priority: row.priority,
     location: row.location,

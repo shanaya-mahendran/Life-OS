@@ -6,6 +6,7 @@ import { CornerDownLeft, Search, Sparkles } from "lucide-react";
 import { NAV_ITEMS } from "./nav";
 import { DOMAIN_MAP } from "@/lib/domains/catalog";
 import { withAlpha } from "@/lib/utils";
+import { domainFamilyColor } from "@/lib/domains/presentation";
 
 interface CommandPaletteProps {
   open: boolean;
@@ -38,7 +39,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         kind: "domain" as const,
         href: `/domains/${domain.slug}`,
         label: domain.name,
-        accent: domain.accent,
+        accent: domainFamilyColor(domain.slug, domain.accent),
       }));
 
     return [...pages, ...domains].slice(0, 7);

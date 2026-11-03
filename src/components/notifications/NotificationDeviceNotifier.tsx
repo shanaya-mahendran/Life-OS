@@ -38,7 +38,10 @@ export function NotificationDeviceNotifier({
     async function checkAndAlert() {
       try {
         const res = await fetch("/api/notifications");
-        if (!res.ok) return;
+        if (!res.ok) {
+          console.error("[lifeos] Notification refresh failed:", res.status);
+          return;
+        }
         const data = await res.json();
         if (!data.ok) return;
 

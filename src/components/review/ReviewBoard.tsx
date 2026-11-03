@@ -29,11 +29,14 @@ interface Proposal {
 
 interface ReviewBoardProps {
   timeZone: string;
+  isCurrentWeek: boolean;
   rangeLabel: string;
   headline: string;
   adherence: number;
   done: number;
   slipped: number;
+  eventAchieved: number;
+  eventResolved: number;
   plannedCount: number;
   focusMinutes: number;
   previousFocusMinutes: number;
@@ -110,11 +113,11 @@ export function ReviewBoard(props: ReviewBoardProps) {
     proposals.length > 0;
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       {hasReviewContent ? (
       <>
-      {hasActivity && <div className="grid gap-3 sm:grid-cols-3">
-        <div className="surface col-span-1 flex items-center gap-3 p-3.5 sm:col-span-1">
+      {hasActivity && <div className="grid min-w-0 gap-3 sm:grid-cols-3">
+        <div className="surface col-span-1 flex min-w-0 items-center gap-3 p-3 sm:col-span-1 sm:p-3.5">
           <ProgressRing value={props.adherence} accent="#8b5cf6" size={96} label="adherence" />
           <div className="min-w-0">
             <div className="text-[0.62rem] uppercase tracking-[0.14em] text-white/35">Plan completed</div>
@@ -122,9 +125,15 @@ export function ReviewBoard(props: ReviewBoardProps) {
           </div>
         </div>
 
-        <div className="surface grid grid-cols-2 gap-2 p-3.5 sm:col-span-2 sm:grid-cols-4">
+        <div className="surface grid min-w-0 grid-cols-2 gap-2 p-3 sm:col-span-2 sm:grid-cols-5 sm:p-3.5">
           <Metric label="Tasks done" value={`${props.done}`} hint={`of ${props.done + props.slipped}`} />
           <Metric label="Slipped" value={`${props.slipped}`} hint="carried over" tone="amber" />
+          <Metric
+            label="Event plans"
+            value={`${props.eventAchieved}/${props.eventResolved}`}
+            hint="check-ins achieved"
+            tone="mint"
+          />
           <Metric label="Blocks planned" value={`${props.plannedCount}`} hint={props.rangeLabel} />
           <Metric
             label="Focus time"
@@ -135,11 +144,11 @@ export function ReviewBoard(props: ReviewBoardProps) {
         </div>
       </div>}
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+      <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         {(props.perDomain.length > 0 || props.insights.length > 0) && <section className="surface p-4">
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-display text-[0.98rem] font-semibold text-white">By domain</h2>
-            <span className="text-[0.62rem] text-white/30">planned time this week</span>
+            <span className="text-[0.62rem] text-white/30">planned time · {props.rangeLabel}</span>
           </div>
 
           {props.perDomain.length === 0 ? (
@@ -153,13 +162,13 @@ export function ReviewBoard(props: ReviewBoardProps) {
                 return (
                   <li key={row.slug}>
                     <div className="mb-1 flex items-center justify-between text-[0.72rem]">
-                      <span className="flex items-center gap-1.5 text-white/70">
+                      <span className="min-w-0 flex items-center gap-1.5 text-white/70">
                         <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: row.accent }} />
-                        {row.name}
+                        <span className="truncate">{row.name}</span>
                       </span>
-                      <span className="text-white/40">
+                      <span className="shrink-0 text-right text-white/40">
                         {hours(row.plannedMinutes)}
-                        <span className="ml-1.5 text-white/25">
+                        <span className="ml-1.5 hidden text-white/25 sm:inline">
                           {row.total ? `${row.done}/${row.total} done` : ""}
                         </span>
                       </span>
@@ -196,7 +205,8 @@ export function ReviewBoard(props: ReviewBoardProps) {
           )}
         </section>}
 
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
+          {props.isCurrentWeek && (
           <section className="surface p-4">
             <h2 className="mb-2 font-display text-[0.95rem] font-semibold text-white">Next week</h2>
             <p className="text-[0.72rem] leading-relaxed text-white/40">
@@ -272,6 +282,7 @@ export function ReviewBoard(props: ReviewBoardProps) {
               </>
             )}
           </section>
+          )}
 
           {(props.slippedTasks.length > 0 || props.deadlineTasks.length > 0) && <section className="surface p-4">
             <h2 className="mb-2 flex items-center gap-1.5 font-display text-[0.95rem] font-semibold text-white">
@@ -282,10 +293,10 @@ export function ReviewBoard(props: ReviewBoardProps) {
             ) : (
               <ul className="space-y-1.5">
                 {props.slippedTasks.map((task) => (
-                  <li key={task.id} className="flex items-center gap-2 text-[0.74rem]">
+                  <li key={task.id} className="flex min-w-0 flex-wrap items-center gap-2 text-[0.74rem]">
                     <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: task.accent }} />
                     <span className="min-w-0 flex-1 truncate text-white/70">{task.title}</span>
-                    <span className="text-[0.62rem] text-white/30">due {task.dueLabel}</span>
+                    <span className="shrink-0 text-[0.62rem] text-white/30">due {task.dueLabel}</span>
                   </li>
                 ))}
               </ul>
@@ -298,10 +309,10 @@ export function ReviewBoard(props: ReviewBoardProps) {
                 </div>
                 <ul className="space-y-1.5">
                   {props.deadlineTasks.map((task) => (
-                    <li key={task.id} className="flex items-center gap-2 text-[0.74rem]">
+                    <li key={task.id} className="flex min-w-0 flex-wrap items-center gap-2 text-[0.74rem]">
                       <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: task.accent }} />
                       <span className="min-w-0 flex-1 truncate text-white/70">{task.title}</span>
-                      <span className="text-[0.62rem] text-white/30">{task.dueLabel}</span>
+                      <span className="shrink-0 text-[0.62rem] text-white/30">{task.dueLabel}</span>
                     </li>
                   ))}
                 </ul>
@@ -312,14 +323,22 @@ export function ReviewBoard(props: ReviewBoardProps) {
       </div>
       </>
       ) : (
-        <section className="surface flex flex-col items-start gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <section className="surface flex min-w-0 flex-col items-start gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
           <div>
-            <h2 className="text-base font-semibold text-white">Nothing to review yet</h2>
-            <p className="mt-1 text-sm text-white/65">Your weekly summary will appear after you plan or complete activity.</p>
+            <h2 className="text-base font-semibold text-white">
+              {props.isCurrentWeek ? "Nothing to review yet" : "No activity recorded for this week"}
+            </h2>
+            <p className="mt-1 text-sm text-white/65">
+              {props.isCurrentWeek
+                ? "Your weekly summary will appear after you plan or complete activity."
+                : "Try another week to explore your past activity."}
+            </p>
           </div>
-          <Link href="/calendar" className="btn btn-primary shrink-0">
-            Plan next week
-          </Link>
+          {props.isCurrentWeek && (
+            <Link href="/calendar" className="btn btn-primary shrink-0">
+              Plan next week
+            </Link>
+          )}
         </section>
       )}
 

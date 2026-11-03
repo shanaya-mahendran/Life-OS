@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Bell, LogOut, Menu, Search } from "lucide-react";
+import { useState } from "react";
+import { Bell, ChevronDown, LogOut, Menu, Search, Settings } from "lucide-react";
 import { initials } from "@/lib/utils";
 import { signOutUser } from "@/lib/auth-client";
 
@@ -16,6 +17,7 @@ interface TopbarProps {
 
 export function Topbar({ userName, notificationCount, onOpenSearch, onOpenMenu, onOpenNotifications }: TopbarProps) {
   const firstName = userName.split(" ")[0];
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
   return (
     <header
@@ -92,26 +94,54 @@ export function Topbar({ userName, notificationCount, onOpenSearch, onOpenMenu, 
             )}
           </button>
 
-          {/* User Avatar with active green dot */}
-          <Link href="/settings" className="relative flex items-center focus:outline-none" title="Open Settings">
-            <div className="relative grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-fuchsia-500 via-violet-500 to-indigo-600 text-[0.72rem] font-bold text-white shadow-[0_0_12px_rgba(168,85,247,0.35)] ring-2 ring-white/10">
-              {initials(userName)}
-              {/* Online indicator dot as in user reference */}
-              <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[#070412] bg-emerald-400 shadow-[0_0_8px_#34d399]" />
-            </div>
-            <span className="hidden text-[0.8rem] font-medium text-white/80 sm:ml-2 sm:block">{firstName}</span>
-          </Link>
-
-          {/* Quick Sign Out Button */}
-          <button
-            type="button"
-            onClick={() => void signOutUser()}
-            title="Sign out of LifeOS"
-            className="grid h-9 w-9 place-items-center rounded-xl border border-white/[0.07] bg-white/[0.04] text-white/50 transition hover:bg-rose-500/15 hover:border-rose-500/30 hover:text-rose-200"
-            aria-label="Sign out"
-          >
-            <LogOut className="h-4 w-4" />
-          </button>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setAccountMenuOpen((open) => !open)}
+              className="flex items-center gap-1.5 rounded-xl p-0.5 text-white/75 transition hover:bg-white/[0.05] focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-400"
+              aria-label="Open account menu"
+              aria-expanded={accountMenuOpen}
+              aria-haspopup="menu"
+            >
+              <span className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-fuchsia-500 via-violet-500 to-indigo-600 text-[0.72rem] font-bold text-white ring-2 ring-white/10">
+                {initials(userName)}
+              </span>
+              <span className="hidden text-[0.8rem] font-medium sm:block">{firstName}</span>
+              <ChevronDown className="hidden h-3.5 w-3.5 text-white/45 sm:block" />
+            </button>
+            {accountMenuOpen && (
+              <>
+                <button
+                  type="button"
+                  className="fixed inset-0 z-40 cursor-default"
+                  aria-label="Close account menu"
+                  onClick={() => setAccountMenuOpen(false)}
+                />
+                <div
+                  role="menu"
+                  aria-label="Account"
+                  className="absolute right-0 top-full z-50 mt-2 w-44 rounded-xl border border-white/10 bg-[#100c20] p-1.5 shadow-xl"
+                >
+                  <Link
+                    href="/settings"
+                    role="menuitem"
+                    onClick={() => setAccountMenuOpen(false)}
+                    className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-white/75 hover:bg-white/[0.06] hover:text-white"
+                  >
+                    <Settings className="h-4 w-4" /> Settings
+                  </Link>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => void signOutUser()}
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-rose-200/80 hover:bg-rose-500/10 hover:text-rose-100"
+                  >
+                    <LogOut className="h-4 w-4" /> Sign out
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </header>

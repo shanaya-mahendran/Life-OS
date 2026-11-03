@@ -114,7 +114,17 @@ export function MonthGrid({ days, events, timeZone, selectedId, onSelectEvent, o
                           style={{ backgroundColor: accent }}
                         />
                         <span className="truncate text-[0.63rem] font-medium text-white/85">{event.title}</span>
-                        <span className="ml-auto shrink-0 text-[0.55rem] font-medium text-white/45">
+                        {event.achievementStatus && (
+                          <span
+                            className={`ml-auto shrink-0 text-[0.52rem] font-semibold ${
+                              event.achievementStatus === "achieved" ? "text-emerald-200" : "text-rose-200"
+                            }`}
+                            aria-label={event.achievementStatus === "achieved" ? "Achieved" : "Not achieved"}
+                          >
+                            {event.achievementStatus === "achieved" ? "Done" : "Missed"}
+                          </span>
+                        )}
+                        <span className={`${event.achievementStatus ? "" : "ml-auto"} shrink-0 text-[0.55rem] font-medium text-white/45`}>
                           {durLabel}
                         </span>
                       </button>

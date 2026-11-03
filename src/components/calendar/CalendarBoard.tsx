@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Layers, Loader2, Plus, TriangleAlert } from "lucide-react";
 import type { UiConflict, UiEvent } from "@/lib/dto";
 import { addZonedDays, utcToZoned, zonedToUtc } from "@/lib/time";
@@ -40,6 +41,7 @@ export function CalendarBoard({
   initialDateISO,
   initialView = "week",
 }: CalendarBoardProps) {
+  const router = useRouter();
   const [view, setView] = useState<View>(initialView);
   const [anchor, setAnchor] = useState(() => new Date(initialDateISO));
   const [events, setEvents] = useState<UiEvent[]>(initialEvents);
@@ -211,6 +213,35 @@ export function CalendarBoard({
       eventId,
       conflicts: [{ severity: "protected", code: "delete", message: "This event will be cancelled and can be restored with undo." }],
     });
+  }
+
+  async function markAchievement(event: UiEvent, achieved: boolean) {
+    setBusy(true);
+    try {
+      const response = await fetch("/api/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eventId: event.id, start: event.start, achieved }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        pushToast(data.error ?? "Could not save this plan outcome.", "error");
+        return;
+      }
+
+      const achievementStatus: UiEvent["achievementStatus"] = achieved ? "achieved" : "missed";
+      const updateOccurrence = (current: UiEvent) =>
+        current.id === event.id && current.start === event.start ? { ...current, achievementStatus } : current;
+      setEvents((current) => current.map(updateOccurrence));
+      setSelected((current) => (current ? updateOccurrence(current) : current));
+      pushToast(achieved ? "Plan marked achieved." : "Plan marked not achieved.");
+      window.dispatchEvent(new Event("lifeos:calendar-changed"));
+      router.refresh();
+    } catch {
+      pushToast("Could not save this plan outcome. Try again.", "error");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function confirmPending() {
@@ -428,6 +459,7 @@ export function CalendarBoard({
               void updateEvent(event.id, { start, end });
             }}
             onDelete={(event) => void cancelEvent(event.id)}
+            onMarkAchievement={(event, achieved) => void markAchievement(event, achieved)}
           />
         )}
       </div>
