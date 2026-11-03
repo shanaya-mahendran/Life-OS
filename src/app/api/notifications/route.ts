@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireProfile } from "@/lib/auth";
-import { confirmPlanAchievement, generateEventNotifications } from "@/lib/notifications";
+import { confirmPlanAchievement, generateEventNotifications, recordEventAchievement } from "@/lib/notifications";
 
 const dbNotification = (prisma as any).notification;
 
@@ -9,26 +9,32 @@ export const dynamic = "force-dynamic";
 
 /** GET /api/notifications - List user notifications & count */
 export async function GET() {
+  let profileId: string;
   try {
     const { profile } = await requireProfile();
+    profileId = profile.id;
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    // Auto-generate fresh alerts (30m, 15m, 15m after) on-demand (works seamlessly on Vercel Hobby!)
-    await generateEventNotifications().catch(() => {});
-
+  try {
+    // Generate reminders and check-ins during the app's active notification poll.
+    await generateEventNotifications();
     const [notifications, unreadCount] = await Promise.all([
       dbNotification.findMany({
-        where: { userId: profile.id },
+        where: { userId: profileId },
         orderBy: { createdAt: "desc" },
         take: 40,
       }),
       dbNotification.count({
-        where: { userId: profile.id, status: "unread" },
+        where: { userId: profileId, status: "unread" },
       }),
     ]);
 
     return NextResponse.json({ ok: true, notifications, unreadCount });
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  } catch (error) {
+    console.error("[lifeos] Could not load notifications:", error);
+    return NextResponse.json({ error: "Could not load notifications." }, { status: 500 });
   }
 }
 
@@ -66,13 +72,22 @@ export async function POST(request: Request) {
   try {
     const { profile } = await requireProfile();
     const body = await request.json();
-    const { notificationId, achieved } = body;
+    const { notificationId, eventId, start, achieved } = body;
 
-    if (!notificationId || typeof achieved !== "boolean") {
-      return NextResponse.json({ error: "notificationId and achieved (boolean) required" }, { status: 400 });
+    if (typeof achieved !== "boolean") {
+      return NextResponse.json({ error: "achieved (boolean) is required" }, { status: 400 });
     }
 
-    const result = await confirmPlanAchievement(profile.id, notificationId, achieved);
+    if (notificationId) {
+      const result = await confirmPlanAchievement(profile.id, notificationId, achieved);
+      return NextResponse.json(result);
+    }
+
+    if (typeof eventId !== "string" || typeof start !== "string") {
+      return NextResponse.json({ error: "notificationId or eventId and start are required" }, { status: 400 });
+    }
+
+    const result = await recordEventAchievement(profile.id, eventId, start, achieved);
     return NextResponse.json(result);
   } catch (err) {
     return NextResponse.json(

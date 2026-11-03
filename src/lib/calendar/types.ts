@@ -1,6 +1,7 @@
 /** Shared calendar types used by the service, agent tools and UI. */
 
 export type EventStatus = "planned" | "suggested" | "done" | "cancelled";
+export type AchievementStatus = "achieved" | "missed" | null;
 export type EventSource = "manual" | "agent" | "auto" | "import";
 
 export interface CalendarEvent {
@@ -17,6 +18,7 @@ export interface CalendarEvent {
   end: Date;
   allDay: boolean;
   status: EventStatus;
+  achievementStatus: AchievementStatus;
   source: EventSource;
   priority: number;
   location: string;

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Check, Loader2, Plus, Sparkles, Star, Zap } from "lucide-react";
 import { DomainIcon } from "@/components/domain/DomainIcon";
 import { cn, withAlpha } from "@/lib/utils";
+import { domainFamilyColor } from "@/lib/domains/presentation";
 
 export interface ChecklistTask {
   id: string;
@@ -138,7 +139,7 @@ export function TaskChecklist({
         domainSlug: created.domainSlug,
         domainName: created.domainName,
         domainIcon: domainObj?.icon ?? "sparkles",
-        accent: created.domainAccent,
+        accent: domainFamilyColor(created.domainSlug, created.domainAccent),
         dueLabel: "Today",
         status: created.status,
         estimateMinutes: created.estimateMinutes,

@@ -22,6 +22,7 @@ import { dueNotebookPeriod, ensurePlanReports } from "@/lib/reset/reports";
 import { syncResetNotifications } from "@/lib/reset/notifications";
 import { planDayDate, phaseForPlanDay } from "@/lib/reset/calc";
 import { RESET_PHASES, phaseForNumber } from "@/lib/reset/constants";
+import { domainFamilyColor } from "@/lib/domains/presentation";
 import { withAlpha } from "@/lib/utils";
 import { PageBanner } from "@/components/shell/PageBanner";
 import { ProgressRing } from "@/components/today/ProgressRing";
@@ -83,7 +84,9 @@ export default async function ResetPlanHomePage() {
       title: entry.commitment.title,
       kind: entry.commitment.kind,
       domainName: domain?.name ?? entry.commitment.domainSlug,
-      accent: domain?.accent ?? kindTone(entry.commitment.kind),
+      accent: domain
+        ? domainFamilyColor(entry.commitment.domainSlug, domain.accent)
+        : kindTone(entry.commitment.kind),
       time: entry.commitment.time,
       durationMinutes: entry.commitment.durationMinutes,
       cadence: entry.commitment.cadence,

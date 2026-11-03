@@ -70,6 +70,9 @@ export function TodaySchedule({
         : total + minutesBetween(new Date(event.start), new Date(event.end)),
     0,
   );
+  const resolvedEvents = events.filter((event) => event.achievementStatus !== null);
+  const achievedEvents = resolvedEvents.filter((event) => event.achievementStatus === "achieved").length;
+  const eventProgress = resolvedEvents.length ? Math.round((achievedEvents / resolvedEvents.length) * 100) : 0;
 
   return (
     <section className="surface flex flex-col p-4 lg:col-span-8">
@@ -82,6 +85,19 @@ export function TodaySchedule({
           <p className="mt-1 text-xs text-white/60">
             {events.length} {events.length === 1 ? "block" : "blocks"} · {humanizeMinutes(focusMinutes)} of planned focus
           </p>
+          <div className="mt-2 flex items-center gap-2 text-[0.68rem] text-white/55">
+            <span className="shrink-0">
+              {resolvedEvents.length
+                ? `Today's plans: ${achievedEvents}/${resolvedEvents.length} achieved`
+                : "Today's plans: no check-ins yet"}
+            </span>
+            <div className="h-1 w-20 overflow-hidden rounded-full bg-white/10">
+              <div
+                className="h-full rounded-full bg-emerald-300 transition-[width]"
+                style={{ width: `${eventProgress}%` }}
+              />
+            </div>
+          </div>
         </div>
         <Link href="/calendar" className="btn btn-quiet shrink-0 text-sm text-violet-200 hover:text-white">
           <Plus className="h-4 w-4" /> Add event
@@ -132,6 +148,17 @@ export function TodaySchedule({
                     <span className="truncate text-sm font-semibold text-white/95">{event.title}</span>
                     {isNow && <span className="shrink-0 rounded bg-rose-500/15 px-1.5 py-0.5 text-xs font-medium text-rose-200">Now</span>}
                     {event.recurrence && <span className="shrink-0 rounded bg-white/[0.06] px-1.5 py-0.5 text-xs text-white/70">Repeating</span>}
+                    {event.achievementStatus && (
+                      <span
+                        className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-medium ${
+                          event.achievementStatus === "achieved"
+                            ? "bg-emerald-500/15 text-emerald-200"
+                            : "bg-rose-500/15 text-rose-200"
+                        }`}
+                      >
+                        {event.achievementStatus === "achieved" ? "Achieved" : "Not achieved"}
+                      </span>
+                    )}
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-white/65">
                     <span className="inline-flex items-center gap-1.5">

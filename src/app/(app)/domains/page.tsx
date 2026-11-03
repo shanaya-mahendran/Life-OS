@@ -6,7 +6,7 @@ import { getWeekStats } from "@/lib/calendar/service";
 import { humanizeMinutes, startOfWeekMonday } from "@/lib/time";
 import { PageBanner } from "@/components/shell/PageBanner";
 import { DomainIcon } from "@/components/domain/DomainIcon";
-import { DOMAIN_FAMILIES } from "@/lib/domains/presentation";
+import { DOMAIN_FAMILIES, domainFamilyColor } from "@/lib/domains/presentation";
 
 export const metadata = { title: "Domains · LifeOS" };
 export const dynamic = "force-dynamic";
@@ -67,7 +67,10 @@ export default async function DomainsPage() {
                         href={`/domains/${domain.slug}`}
                         className="group flex min-h-12 items-center gap-3 py-2.5 transition hover:bg-white/[0.025]"
                       >
-                        <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: family.color }} />
+                        <span
+                          className="h-2 w-2 shrink-0 rounded-full"
+                          style={{ backgroundColor: domainFamilyColor(domain.slug, domain.accent) }}
+                        />
                         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/[0.04] text-white/65">
                           <DomainIcon name={domain.icon} size={16} />
                         </span>

@@ -10,6 +10,7 @@
 import { prisma } from "@/lib/db";
 import { listEvents, listTasks, getDayOverview, getWeekStats, findSlots, type ServiceUser } from "@/lib/calendar/service";
 import { addZonedDays, formatInZone, minutesBetween, startOfWeekMonday, utcToZoned } from "@/lib/time";
+import { domainFamilyColor } from "@/lib/domains/presentation";
 
 export interface BriefItem {
   id: string;
@@ -64,7 +65,7 @@ export async function buildMorningBrief(user: ServiceUser, now: Date): Promise<M
       title: event.title,
       domainSlug: event.domainSlug,
       domainName: event.domainName,
-      accent: event.domainAccent,
+      accent: domainFamilyColor(event.domainSlug, event.domainAccent),
       timeLabel: `${clock(event.start, tz)} – ${clock(event.end, tz)}`,
       protected: event.isProtected,
     }));
@@ -84,7 +85,7 @@ export async function buildMorningBrief(user: ServiceUser, now: Date): Promise<M
       id: task.id,
       title: task.title,
       domainName: task.domainName,
-      accent: task.domainAccent,
+      accent: domainFamilyColor(task.domainSlug, task.domainAccent),
       dueLabel: task.dueDate ? formatInZone(task.dueDate, tz, { day: "numeric", month: "short" }) : null,
     }));
 
@@ -156,6 +157,8 @@ export interface WeeklyReview {
   adherence: number;
   done: number;
   slipped: number;
+  eventAchieved: number;
+  eventResolved: number;
   plannedCount: number;
   focusMinutes: number;
   previousFocusMinutes: number;
@@ -167,18 +170,59 @@ export interface WeeklyReview {
 }
 
 /** Everything the Sunday review shows for a given week. */
-export async function buildWeeklyReview(user: ServiceUser, weekStart: Date): Promise<WeeklyReview> {
+export async function buildWeeklyReview(
+  user: ServiceUser,
+  weekStart: Date,
+  includeCurrentPlanning = true,
+): Promise<WeeklyReview> {
   const stats = await getWeekStats(user, weekStart);
   const tz = user.timezone;
   const weekEnd = addZonedDays(weekStart, 7, tz);
   const inFourteen = addZonedDays(weekStart, 14, tz);
 
-  const tasks = await listTasks(user, { includeDone: true, limit: 400 });
+  const taskRows = await prisma.task.findMany({
+    where: {
+      userId: user.id,
+      OR: [
+        { dueDate: { gte: weekStart, lt: weekEnd } },
+        { completedAt: { gte: weekStart, lt: weekEnd } },
+      ],
+    },
+    include: { domain: { select: { slug: true, name: true, accent: true } } },
+    orderBy: { dueDate: "asc" },
+  });
+  const completedInWeek = (task: (typeof taskRows)[number]) =>
+    task.completedAt !== null && task.completedAt >= weekStart && task.completedAt < weekEnd;
+  const dueInWeek = (task: (typeof taskRows)[number]) =>
+    task.dueDate !== null && task.dueDate >= weekStart && task.dueDate < weekEnd;
+  const tasks = taskRows.filter(
+    (task) => completedInWeek(task) || (dueInWeek(task) && (!task.completedAt || task.completedAt >= weekEnd)),
+  );
+  const done = tasks.filter(completedInWeek).length;
+  const now = new Date();
+  const isSlipped = (task: (typeof taskRows)[number]) =>
+    dueInWeek(task) &&
+    !completedInWeek(task) &&
+    (!includeCurrentPlanning || (task.dueDate !== null && task.dueDate < now));
+  const slippedCount = taskRows.filter(isSlipped).length;
+  const slippedTasks = taskRows
+    .filter(isSlipped)
+    .slice(0, 6)
+    .map((task) => ({
+      id: task.id,
+      title: task.title,
+      domainName: task.domain.name,
+      accent: domainFamilyColor(task.domain.slug, task.domain.accent),
+      dueLabel: task.dueDate ? formatInZone(task.dueDate, tz, { day: "numeric", month: "short" }) : "",
+    }));
+
+  const currentTasks = includeCurrentPlanning ? await listTasks(user, { limit: 400 }) : [];
   const doneByDomain = new Map<string, number>();
   const totalByDomain = new Map<string, number>();
   for (const task of tasks) {
-    totalByDomain.set(task.domainSlug, (totalByDomain.get(task.domainSlug) ?? 0) + 1);
-    if (task.status === "done") doneByDomain.set(task.domainSlug, (doneByDomain.get(task.domainSlug) ?? 0) + 1);
+    const slug = task.domain.slug;
+    totalByDomain.set(slug, (totalByDomain.get(slug) ?? 0) + 1);
+    if (completedInWeek(task)) doneByDomain.set(slug, (doneByDomain.get(slug) ?? 0) + 1);
   }
 
   const perDomain: ReviewDomainRow[] = stats.perDomain.slice(0, 8).map((row) => {
@@ -187,7 +231,7 @@ export async function buildWeeklyReview(user: ServiceUser, weekStart: Date): Pro
     return {
       slug: row.slug,
       name: row.name,
-      accent: row.accent,
+      accent: domainFamilyColor(row.slug, row.accent),
       plannedMinutes: row.minutes,
       done,
       total,
@@ -195,25 +239,14 @@ export async function buildWeeklyReview(user: ServiceUser, weekStart: Date): Pro
     };
   });
 
-  const slippedTasks = tasks
-    .filter((task) => task.status !== "done" && task.dueDate && task.dueDate < weekEnd)
-    .slice(0, 6)
-    .map((task) => ({
-      id: task.id,
-      title: task.title,
-      domainName: task.domainName,
-      accent: task.domainAccent,
-      dueLabel: task.dueDate ? formatInZone(task.dueDate, tz, { day: "numeric", month: "short" }) : "",
-    }));
-
-  const deadlineTasks = tasks
+  const deadlineTasks = currentTasks
     .filter((task) => task.status !== "done" && task.dueDate && task.dueDate >= weekEnd && task.dueDate <= inFourteen)
     .slice(0, 6)
     .map((task) => ({
       id: task.id,
       title: task.title,
       domainName: task.domainName,
-      accent: task.domainAccent,
+      accent: domainFamilyColor(task.domainSlug, task.domainAccent),
       dueLabel: task.dueDate ? formatInZone(task.dueDate, tz, { day: "numeric", month: "short" }) : "",
     }));
 
@@ -223,10 +256,19 @@ export async function buildWeeklyReview(user: ServiceUser, weekStart: Date): Pro
   if (focusDelta < 0) insights.push(`${Math.round((-focusDelta / 60) * 10) / 10}h less focus time than last week.`);
   if (stats.sleepNights >= 5) insights.push(`Sleep protected on ${stats.sleepNights} nights.`);
   if (stats.karateSessions >= 2) insights.push(`Karate kept on the calendar ${stats.karateSessions} times.`);
-  if (slippedTasks.length) insights.push(`${slippedTasks.length} tasks slipped — carry them into next week.`);
+  if (slippedCount) {
+    insights.push(
+      includeCurrentPlanning
+        ? `${slippedCount} tasks slipped — carry them into next week.`
+        : `${slippedCount} tasks missed their due date this week.`,
+    );
+  }
   if (stats.perDomain.length && stats.perDomain[0]) {
     insights.push(`Most time went to ${stats.perDomain[0].name} (${Math.round(stats.perDomain[0].minutes / 60)}h).`);
   }
+  const adherence = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
+  const eventAchieved = stats.events.filter((event) => event.achievementStatus === "achieved").length;
+  const eventResolved = stats.events.filter((event) => event.achievementStatus !== null).length;
 
   return {
     weekStartISO: weekStart.toISOString(),
@@ -235,9 +277,11 @@ export async function buildWeeklyReview(user: ServiceUser, weekStart: Date): Pro
       tz,
       { day: "numeric", month: "short" },
     )}`,
-    adherence: stats.adherence,
-    done: stats.done,
-    slipped: stats.slipped,
+    adherence,
+    done,
+    slipped: slippedCount,
+    eventAchieved,
+    eventResolved,
     plannedCount: stats.plannedCount,
     focusMinutes: stats.focusMinutes,
     previousFocusMinutes: stats.prevFocusMinutes,
@@ -246,9 +290,11 @@ export async function buildWeeklyReview(user: ServiceUser, weekStart: Date): Pro
     deadlineTasks,
     insights,
     headline:
-      stats.adherence >= 80
+      !tasks.length
+        ? "No tasks were due or completed this week."
+        : adherence >= 80
         ? "Strong week — the important blocks survived."
-        : stats.adherence >= 50
+        : adherence >= 50
           ? "Solid progress with room to tighten next week."
           : "A heavy week. Let's plan fewer, better blocks next week.",
   };

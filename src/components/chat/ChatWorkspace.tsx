@@ -8,13 +8,14 @@ import {
   CircleAlert,
   Loader2,
   Plus,
-  RotateCcw,
+  Undo2,
   Sparkles,
   Wand2,
   Zap,
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { withAlpha } from "@/lib/utils";
+import { domainFamilyColor } from "@/lib/domains/presentation";
 import { ChangeCard, PendingCard, type ChatChange } from "./ChangeCard";
 
 interface PendingLike {
@@ -51,7 +52,6 @@ interface ChatWorkspaceProps {
   timeZone: string;
   userName: string;
   engine: "deepseek" | "rules";
-  model: string;
   usage: { used: number; budget: number };
   quickPrompts: string[];
 }
@@ -78,7 +78,6 @@ export function ChatWorkspace({
   timeZone,
   userName,
   engine,
-  model,
   usage,
   quickPrompts,
 }: ChatWorkspaceProps) {
@@ -244,18 +243,17 @@ export function ChatWorkspace({
       )}
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
-        <section className="surface flex h-[calc(100dvh-14rem)] min-h-[24rem] flex-col overflow-hidden sm:h-[calc(100dvh-11.5rem)] sm:min-h-[32rem]">
-          <header className="flex items-center gap-3 border-b border-white/[0.06] px-4 py-3">
+        <section className="surface flex h-[calc(100dvh-12rem)] min-h-[25rem] flex-col overflow-hidden sm:h-[calc(100dvh-11.5rem)] sm:min-h-[32rem]">
+          <header className="flex min-h-12 items-center gap-2.5 border-b border-white/[0.06] px-3 py-2 sm:gap-3 sm:px-4 sm:py-3">
             <span className="relative grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 text-white">
               <Bot className="h-4.5 w-4.5" />
-              <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#0d0920] bg-emerald-400" />
             </span>
             <div className="min-w-0">
               <h2 className="font-display text-[0.95rem] font-semibold text-white">
                 Mochi <span className="ml-1 hidden text-[0.7rem] font-medium text-violet-300 sm:inline">· AI Wingman</span>
               </h2>
               <p className="truncate text-[0.66rem] text-white/40">
-                {engine === "deepseek" ? `Online · ${model}` : "Online · rules engine (no API key needed)"}
+                {engine === "deepseek" ? "Online" : "Online · rules"}
               </p>
             </div>
             <div className="ml-auto flex items-center gap-1.5">
@@ -276,18 +274,18 @@ export function ChatWorkspace({
                 onClick={() => void undoLast()}
                 disabled={undoing}
                 className="btn btn-ghost shrink-0 px-2 py-1.5 text-[0.7rem] sm:px-2.5"
-                title="Undo the last agent change"
-                aria-label="Undo the last agent change"
+                title="Undo the last change made by Mochi"
+                aria-label="Undo the last change made by Mochi"
               >
-                {undoing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
-                <span className="hidden sm:inline">Undo last</span>
+                {undoing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Undo2 className="h-3.5 w-3.5" />}
+                <span>Undo<span className="hidden sm:inline"> last</span></span>
               </button>
             </div>
           </header>
 
           <div ref={scrollRef} className="scroll-thin flex-1 space-y-4 overflow-y-auto px-3 py-4 sm:px-4">
             {empty && (
-              <div className="mx-auto max-w-md py-8 text-center">
+              <div className="mx-auto max-w-md py-4 text-center sm:py-8">
                 <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-violet-400/25 bg-violet-500/15 text-violet-200">
                   <Sparkles className="h-5 w-5 text-violet-300" />
                 </span>
@@ -295,7 +293,7 @@ export function ChatWorkspace({
                   Hey {userName.split(" ")[0]}, I&apos;m Mochi! 👋
                 </h3>
                 <p className="mt-1 text-[0.78rem] leading-relaxed text-white/55">
-                  Plan your day, reschedule the chaos, or just chat, vent, and joke around. I&apos;ve got your back across all 18 life domains.
+                  Talk to Mochi.
                 </p>
               </div>
             )}
@@ -351,11 +349,6 @@ export function ChatWorkspace({
                       />
                     )}
 
-                    {!isUser && message.engine && (
-                      <div className="mt-1 text-[0.58rem] uppercase tracking-[0.14em] text-white/30">
-                        Mochi · {message.engine === "deepseek" ? (model || "Groq AI") : "rules engine"}
-                      </div>
-                    )}
                   </div>
 
                   {isUser && (
@@ -416,7 +409,7 @@ export function ChatWorkspace({
                   }
                 }}
                 rows={1}
-                placeholder="Talk to Mochi — plan your day, reschedule, or just chat…"
+                placeholder="Message Mochi…"
                 className="max-h-28 min-h-[2.1rem] flex-1 resize-none bg-transparent px-2 py-1.5 text-[16px] sm:text-[0.84rem] text-white outline-none placeholder:text-white/30"
               />
               <button
@@ -452,7 +445,7 @@ export function ChatWorkspace({
                   {engine === "deepseek" ? "AI model online" : "Rules engine"}
                 </div>
                 <div className="text-[0.62rem] text-white/35">
-                  {engine === "deepseek" ? model : "Deterministic, no API key"}
+                  {engine === "deepseek" ? "AI model" : "Deterministic, no API key"}
                 </div>
               </div>
             </div>
@@ -497,7 +490,7 @@ export function ChatWorkspace({
                     <li key={`${change.title}-${index}`} className="flex items-center gap-2 rounded-lg px-1.5 py-1">
                       <span
                         className="h-1.5 w-1.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: change.domainAccent }}
+                        style={{ backgroundColor: domainFamilyColor(change.domainSlug, change.domainAccent) }}
                       />
                       <span className="min-w-0 flex-1 truncate text-[0.72rem] text-white/70">{change.title}</span>
                       <span className="shrink-0 text-[0.6rem] text-white/30">{change.action}</span>
@@ -525,7 +518,7 @@ export function ChatWorkspace({
 
           <section className="rounded-xl border border-emerald-400/20 bg-emerald-400/[0.07] p-3">
             <div className="flex items-center gap-1.5 text-[0.72rem] font-semibold text-emerald-100">
-              <RotateCcw className="h-3.5 w-3.5" /> Everything is undoable
+              <Undo2 className="h-3.5 w-3.5" /> Everything is undoable
             </div>
             <p className="mt-1 text-[0.66rem] leading-relaxed text-emerald-100/60">
               Each write stores its inverse. “Undo last” restores the previous state exactly — including recurring blocks.

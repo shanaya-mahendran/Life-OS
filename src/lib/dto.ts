@@ -12,6 +12,7 @@ export interface UiEvent {
   domainAccent: string;
   isProtected: boolean;
   status: string;
+  achievementStatus: "achieved" | "missed" | null;
   source: string;
   priority: number;
   location: string;
@@ -49,6 +50,7 @@ export function toUiEvent(event: CalendarEvent): UiEvent {
     domainAccent: event.domainAccent,
     isProtected: event.isProtected,
     status: event.status,
+    achievementStatus: event.achievementStatus,
     source: event.source,
     priority: event.priority,
     location: event.location,

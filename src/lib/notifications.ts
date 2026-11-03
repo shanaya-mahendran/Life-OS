@@ -282,30 +282,8 @@ export async function confirmPlanAchievement(
     data: { status: newStatus },
   });
 
-  if (notification.eventId && achieved) {
-    // Mark event as done
-    await prisma.event.updateMany({
-      where: { id: notification.eventId, userId },
-      data: { status: "done" },
-    });
-
-    // Mark any matching tasks as completed
-    const event = await prisma.event.findUnique({
-      where: { id: notification.eventId },
-      select: { title: true, domainId: true },
-    });
-
-    if (event) {
-      await prisma.task.updateMany({
-        where: {
-          userId,
-          domainId: event.domainId,
-          title: { contains: event.title, mode: "insensitive" },
-          status: { not: "done" },
-        },
-        data: { status: "done", completedAt: new Date() },
-      });
-    }
+  if (notification.eventId) {
+    await applyEventOutcome(userId, notification.eventId, achieved, notification.type.includes(":"));
   }
 
   return {
@@ -314,5 +292,104 @@ export async function confirmPlanAchievement(
     message: achieved
       ? "Awesome! Plan recorded as achieved."
       : "Noted. Plan recorded as missed / rescheduled.",
+  };
+}
+
+async function applyEventOutcome(userId: string, eventId: string, achieved: boolean, recurringOccurrence: boolean) {
+  const event = await prisma.event.findFirst({
+    where: { id: eventId, userId },
+    select: { title: true, domainId: true, recurrence: true },
+  });
+  if (!event) return;
+
+  if (!event.recurrence || !recurringOccurrence) {
+    await prisma.event.updateMany({
+      where: { id: eventId, userId },
+      data: { status: achieved ? "done" : "planned" },
+    });
+  }
+
+  if (achieved) {
+    await prisma.task.updateMany({
+      where: {
+        userId,
+        domainId: event.domainId,
+        title: { contains: event.title, mode: "insensitive" },
+        status: { not: "done" },
+      },
+      data: { status: "done", completedAt: new Date() },
+    });
+  }
+}
+
+/** Records an occurrence outcome from the calendar, including recurring events. */
+export async function recordEventAchievement(
+  userId: string,
+  eventId: string,
+  occurrenceStartISO: string,
+  achieved: boolean,
+): Promise<{ ok: boolean; status: string; message: string }> {
+  const requestedStart = new Date(occurrenceStartISO);
+  if (!Number.isFinite(requestedStart.getTime())) throw new Error("Invalid event occurrence.");
+
+  const event = await prisma.event.findFirst({
+    where: { id: eventId, userId },
+    include: { user: { select: { timezone: true } } },
+  });
+  if (!event) throw new Error("Event not found.");
+  if (event.status === "cancelled" || event.status === "suggested") {
+    throw new Error("Only scheduled events can be checked in.");
+  }
+
+  const timeZone = event.user?.timezone || "Asia/Kolkata";
+  const occurrence = event.recurrence
+    ? expandOccurrences(
+        {
+          start: event.start,
+          end: event.end,
+          recurrence: event.recurrence,
+          recurrenceUntil: event.recurrenceUntil,
+        },
+        new Date(requestedStart.getTime() - 1),
+        new Date(requestedStart.getTime() + 1),
+        timeZone,
+      ).find((item) => item.start.getTime() === requestedStart.getTime())
+    : event.start.getTime() === requestedStart.getTime()
+      ? { start: event.start, end: event.end }
+      : undefined;
+
+  if (!occurrence) throw new Error("Event occurrence not found.");
+  if (occurrence.end > new Date()) throw new Error("This event has not finished yet.");
+
+  const type = event.recurrence ? `after_15m:${dayKey(occurrence.start, timeZone)}` : "after_15m";
+  const status = achieved ? "confirmed_achieved" : "confirmed_missed";
+  const existing = await dbNotification.findFirst({
+    where: { userId, eventId, type },
+  });
+  const notificationData = {
+    userId,
+    eventId,
+    type,
+    title: `Confirm: Did you achieve “${event.title}”?`,
+    message: `Finished at ${clock(occurrence.end, timeZone)}. Confirm to track your adherence.`,
+    link: "/calendar",
+    metadata: {
+      start: occurrence.start.toISOString(),
+      end: occurrence.end.toISOString(),
+      eventTitle: event.title,
+    },
+    status,
+  };
+  if (existing) {
+    await dbNotification.update({ where: { id: existing.id }, data: { status } });
+  } else {
+    await dbNotification.create({ data: notificationData });
+  }
+
+  await applyEventOutcome(userId, eventId, achieved, Boolean(event.recurrence));
+  return {
+    ok: true,
+    status,
+    message: achieved ? "Plan recorded as achieved." : "Plan recorded as not achieved.",
   };
 }

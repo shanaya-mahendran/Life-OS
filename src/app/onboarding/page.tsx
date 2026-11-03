@@ -1,5 +1,6 @@
 import { Logo } from "@/components/brand/Logo";
 import { DOMAINS } from "@/lib/domains/catalog";
+import { domainFamilyColor } from "@/lib/domains/presentation";
 import { requireProfile } from "@/lib/auth";
 import { withAlpha } from "@/lib/utils";
 import { OnboardingForm } from "./OnboardingForm";
@@ -39,19 +40,22 @@ export default async function OnboardingPage() {
             Your eighteen domains
           </p>
           <div className="flex flex-wrap justify-center gap-1.5">
-            {DOMAINS.map((domain) => (
-              <span
-                key={domain.slug}
-                className="rounded-full border px-2.5 py-1 text-[0.66rem] font-medium"
-                style={{
-                  borderColor: withAlpha(domain.accent, 0.35),
-                  backgroundColor: withAlpha(domain.accent, 0.12),
-                  color: domain.accent,
-                }}
-              >
-                {domain.name}
-              </span>
-            ))}
+            {DOMAINS.map((domain) => {
+              const accent = domainFamilyColor(domain.slug, domain.accent);
+              return (
+                <span
+                  key={domain.slug}
+                  className="rounded-full border px-2.5 py-1 text-[0.66rem] font-medium"
+                  style={{
+                    borderColor: withAlpha(accent, 0.35),
+                    backgroundColor: withAlpha(accent, 0.12),
+                    color: accent,
+                  }}
+                >
+                  {domain.name}
+                </span>
+              );
+            })}
           </div>
         </div>
       </div>

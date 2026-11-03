@@ -13,12 +13,25 @@ interface AppShellProps {
   userName: string;
   adherence: number;
   taskCount: number;
+  eventPlanCount: number;
+  eventAchievedCount: number;
+  eventResolvedCount: number;
   notificationCount: number;
   features?: SidebarFeatures;
   children: React.ReactNode;
 }
 
-export function AppShell({ userName, adherence, taskCount, notificationCount, features, children }: AppShellProps) {
+export function AppShell({
+  userName,
+  adherence,
+  taskCount,
+  eventPlanCount,
+  eventAchievedCount,
+  eventResolvedCount,
+  notificationCount,
+  features,
+  children,
+}: AppShellProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -40,6 +53,9 @@ export function AppShell({ userName, adherence, taskCount, notificationCount, fe
       <Sidebar
         adherence={adherence}
         taskCount={taskCount}
+        eventPlanCount={eventPlanCount}
+        eventAchievedCount={eventAchievedCount}
+        eventResolvedCount={eventResolvedCount}
         mobileOpen={menuOpen}
         onClose={() => setMenuOpen(false)}
         features={features}

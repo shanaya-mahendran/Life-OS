@@ -2,6 +2,7 @@
 
 import { CalendarClock, Check, Loader2, RotateCcw, Sparkles } from "lucide-react";
 import { withAlpha } from "@/lib/utils";
+import { domainFamilyColor } from "@/lib/domains/presentation";
 
 export interface ChatChange {
   kind: "event" | "task";
@@ -63,26 +64,27 @@ interface ChangeCardProps {
 
 export function ChangeCard({ change, timeZone, undone, busy, onUndo }: ChangeCardProps) {
   const range = formatRange(change, timeZone);
+  const accent = domainFamilyColor(change.domainSlug, change.domainAccent);
 
   return (
     <div
       className="mt-2 overflow-hidden rounded-xl border"
       style={{
-        borderColor: withAlpha(change.domainAccent, 0.32),
-        background: `linear-gradient(150deg, ${withAlpha(change.domainAccent, 0.16)}, rgba(13,9,25,0.9))`,
+        borderColor: withAlpha(accent, 0.32),
+        background: `linear-gradient(150deg, ${withAlpha(accent, 0.16)}, rgba(13,9,25,0.9))`,
       }}
     >
       <div className="flex items-start gap-2.5 p-2.5">
         <span
           className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg text-[0.6rem] font-bold uppercase text-white"
-          style={{ backgroundColor: withAlpha(change.domainAccent, 0.65) }}
+          style={{ backgroundColor: withAlpha(accent, 0.65) }}
         >
           {change.kind === "task" ? <Check className="h-3.5 w-3.5" /> : <CalendarClock className="h-3.5 w-3.5" />}
         </span>
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <span className="text-[0.6rem] font-semibold uppercase tracking-[0.12em]" style={{ color: change.domainAccent }}>
+            <span className="text-[0.6rem] font-semibold uppercase tracking-[0.12em]" style={{ color: accent }}>
               {ACTION_LABEL[change.action] ?? change.action}
             </span>
             <span className="text-[0.6rem] text-white/30">· {change.domainName}</span>

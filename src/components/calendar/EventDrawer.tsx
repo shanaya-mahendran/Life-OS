@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarPlus, Clock, Lock, Pencil, Repeat2, ShieldCheck, Sparkles, Trash2, X } from "lucide-react";
+import { CalendarPlus, CheckCircle2, Clock, Lock, Pencil, Repeat2, ShieldCheck, Sparkles, Trash2, X, XCircle } from "lucide-react";
 import type { UiConflict, UiEvent } from "@/lib/dto";
 import { withAlpha } from "@/lib/utils";
 import { domainFamilyColor } from "@/lib/domains/presentation";
@@ -15,10 +15,20 @@ interface EventDrawerProps {
   onEdit: (event: UiEvent) => void;
   onNudge: (event: UiEvent, minutes: number) => void;
   onDelete: (event: UiEvent) => void;
+  onMarkAchievement: (event: UiEvent, achieved: boolean) => void;
   busy?: boolean;
 }
 
-export function EventDrawer({ event, timeZone, onClose, onEdit, onNudge, onDelete, busy }: EventDrawerProps) {
+export function EventDrawer({
+  event,
+  timeZone,
+  onClose,
+  onEdit,
+  onNudge,
+  onDelete,
+  onMarkAchievement,
+  busy,
+}: EventDrawerProps) {
   const [conflicts, setConflicts] = useState<UiConflict[] | null>(null);
 
   useEffect(() => {
@@ -117,6 +127,47 @@ export function EventDrawer({ event, timeZone, onClose, onEdit, onNudge, onDelet
           </ul>
         )}
       </div>
+
+      {new Date(event.end) <= new Date() && (
+        <div className="mt-4 rounded-xl border border-white/[0.08] bg-white/[0.025] p-3">
+          <div className="mb-2 text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-white/45">
+            Plan outcome
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => onMarkAchievement(event, true)}
+              disabled={busy}
+              aria-pressed={event.achievementStatus === "achieved"}
+              className={`btn px-2.5 py-1 text-[0.7rem] ${
+                event.achievementStatus === "achieved"
+                  ? "border border-emerald-400/40 bg-emerald-500/15 text-emerald-100"
+                  : "btn-ghost"
+              }`}
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" /> Achieved
+            </button>
+            <button
+              type="button"
+              onClick={() => onMarkAchievement(event, false)}
+              disabled={busy}
+              aria-pressed={event.achievementStatus === "missed"}
+              className={`btn px-2.5 py-1 text-[0.7rem] ${
+                event.achievementStatus === "missed"
+                  ? "border border-rose-400/40 bg-rose-500/15 text-rose-100"
+                  : "btn-ghost"
+              }`}
+            >
+              <XCircle className="h-3.5 w-3.5" /> Not achieved
+            </button>
+          </div>
+          <p className="mt-2 text-[0.65rem] text-white/40">
+            {event.achievementStatus
+              ? `Marked ${event.achievementStatus === "achieved" ? "achieved" : "not achieved"} for this occurrence.`
+              : "Record this occurrence for your daily and weekly progress."}
+          </p>
+        </div>
+      )}
 
       <div className="mt-4 space-y-1.5">
         <button onClick={() => onEdit(event)} className="btn btn-ghost w-full justify-start">
