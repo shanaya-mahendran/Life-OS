@@ -13,6 +13,7 @@ const STATIC_ASSETS = [
   "/manifest.webmanifest",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
+  "/icons/notification-badge.png",
   "/icons/apple-touch-icon.png",
   "/icons/icon.svg",
   "/favicon.ico",
@@ -93,8 +94,8 @@ self.addEventListener("push", (event) => {
   const title = data.title || "LifeOS Alert 🔔";
   const options = {
     body: data.message || "Your scheduled block is coming up.",
-    icon: "/icons/icon-192.png",
-    badge: "/icons/icon-192.png",
+    icon: "/icons/notification-badge.png",
+    badge: "/icons/notification-badge.png",
     data: { url: data.link || "/today" },
     vibrate: [150, 80, 150],
     tag: data.id || "lifeos-event-notification",
@@ -126,8 +127,8 @@ self.addEventListener("message", (event) => {
     const { title, message, link, id } = event.data;
     self.registration.showNotification(title || "LifeOS Reminder", {
       body: message || "",
-      icon: "/icons/icon-192.png",
-      badge: "/icons/icon-192.png",
+      icon: "/icons/notification-badge.png",
+      badge: "/icons/notification-badge.png",
       data: { url: link || "/today" },
       vibrate: [150, 80, 150],
       tag: id || String(Date.now()),

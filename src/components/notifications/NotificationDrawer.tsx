@@ -76,7 +76,7 @@ export function NotificationDrawer({ open, onClose, onCountChange }: Notificatio
     } else if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
       new Notification("Test Alert: Mentoring in 15m 🔔", {
         body: "Starts at 3:00 PM. Your phone notifications are working perfectly!",
-        icon: "/icons/icon-192.png",
+        icon: "/icons/notification-badge.png",
       });
     }
   }

@@ -81,8 +81,8 @@ export function NotificationDeviceNotifier({
               try {
                 new Notification(notif.title, {
                   body: notif.message,
-                  icon: "/icons/icon-192.png",
-                  badge: "/icons/icon-192.png",
+                  icon: "/icons/notification-badge.png",
+                  badge: "/icons/notification-badge.png",
                   tag: notif.id,
                 });
               } catch {
