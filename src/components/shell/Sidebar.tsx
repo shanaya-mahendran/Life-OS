@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { X } from "lucide-react";
+import { Activity, BookOpen, RotateCcw, X } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { NAV_ITEMS } from "./nav";
 import { cn } from "@/lib/utils";
@@ -21,8 +21,13 @@ interface SidebarProps {
   features?: SidebarFeatures;
 }
 
-export function Sidebar({ adherence, taskCount, mobileOpen, onClose }: SidebarProps) {
+export function Sidebar({ adherence, taskCount, mobileOpen, onClose, features }: SidebarProps) {
   const pathname = usePathname();
+  const personalTools = [
+    features?.resetPlan && { href: "/reset", label: "Reset Plan", icon: RotateCcw },
+    features?.habitTracker && { href: "/habits", label: "Habit Tracker", icon: Activity },
+    features?.diary && { href: "/diary", label: "Diary", icon: BookOpen },
+  ].filter((item) => item !== false && item !== undefined);
 
   const content = (
     <div className="flex h-full min-h-0 flex-col gap-5 border-r border-white/[0.06] bg-[var(--bg-surface)] px-4 pb-5 pt-5">
@@ -60,6 +65,38 @@ export function Sidebar({ adherence, taskCount, mobileOpen, onClose }: SidebarPr
           );
         })}
       </nav>
+
+      {personalTools.length > 0 && (
+        <nav aria-label="Personal tools" className="shrink-0 space-y-1">
+          <p className="px-3 pb-1 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-white/35">
+            Personal tools
+          </p>
+          {personalTools.map((item) => {
+            const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onClose}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "group relative flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition",
+                  active
+                    ? "bg-violet-500/10 text-violet-200"
+                    : "text-white/65 hover:bg-white/[0.05] hover:text-white",
+                )}
+              >
+                {active && (
+                  <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-violet-300" />
+                )}
+                <Icon className={cn("h-[17px] w-[17px]", active ? "text-violet-300" : "text-white/35")} />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+      )}
 
       <div className="min-h-0 flex-1 overflow-y-auto" />
       {taskCount > 0 && (
