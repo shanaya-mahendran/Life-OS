@@ -31,15 +31,7 @@ export default async function CalendarPage() {
       <PageBanner
         icon={<CalendarDays className="h-5 w-5" />}
         title="Calendar"
-        subtitle="Your complete schedule, beautifully organised."
-        aside={
-          <div className="hidden rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-right sm:block">
-            <p className="text-[0.7rem] italic text-white/55">“Dream it. Plan it. Do it.”</p>
-            <p className="mt-0.5 text-[0.6rem] uppercase tracking-[0.18em] text-white/25">
-              {user.timezone.replace("_", " ")}
-            </p>
-          </div>
-        }
+        subtitle={`Your schedule · ${user.timezone.replace("_", " ")}`}
       />
 
       <CalendarBoard

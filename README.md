@@ -34,7 +34,7 @@ The app now carries two first-class sections beside the domains. Each one sits b
 npm run db:push
 ```
 
-Optional environment variables: `DIARY_ENABLED` / `NEXT_PUBLIC_DIARY_ENABLED` (`false` hides the section), `DIARY_AI_ENABLED=false` (keeps the diary, disables every model call), and `DIARY_MODEL` (defaults to `GROQ_MODEL`). With no key configured the diary still saves; the page simply stays neutral.
+Optional environment variables: `OPENROUTER_API_KEY` and `OPENROUTER_API_KEY_2` (preferred provider; `OPENROUTER_MODEL` defaults to `openai/gpt-4o`), or `GROQ_API_KEY` as a fallback. `DIARY_ENABLED` / `NEXT_PUBLIC_DIARY_ENABLED` (`false` hides the section), `DIARY_AI_ENABLED=false` (keeps the diary, disables every model call), and `DIARY_MODEL` (defaults to the active agent model) also apply. With no model key configured the diary still saves; the page simply stays neutral.
 
 ---
 

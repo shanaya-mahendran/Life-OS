@@ -155,7 +155,7 @@ export function DiarySettingsForm({ settings }: Props) {
         {!current.aiConfigured && (
           <p className="mt-2 rounded-xl border border-amber-400/20 bg-amber-400/[0.07] px-3 py-2 text-[0.66rem] leading-relaxed text-amber-100/70">
             No model key is configured on this deployment yet. Entries save exactly as written, the page stays neutral and deep
-            modes stay closed. Set GROQ_API_KEY (or DIARY_MODEL) to switch the quiet layer on.
+            modes stay closed. Set OPENROUTER_API_KEY (or GROQ_API_KEY) to switch the quiet layer on.
           </p>
         )}
         {current.pausedUntil && new Date(current.pausedUntil) > new Date() && (

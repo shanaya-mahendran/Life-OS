@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import type { UiEvent } from "@/lib/dto";
 import { cn, withAlpha } from "@/lib/utils";
+import { domainFamilyColor } from "@/lib/domains/presentation";
 import type { DayCell } from "./calendar-utils";
 import { minutesOfDay, timeLabel } from "./calendar-utils";
 import { utcToZoned, zonedToUtc } from "@/lib/time";
@@ -153,6 +154,7 @@ export function WeekGrid({
                   const height = Math.max(26, ((clampedEnd - clampedStart) / 60) * ROW_HEIGHT - 2);
                   const selected = event.id === selectedId;
                   const short = height < 44;
+                  const accent = domainFamilyColor(event.domainSlug, event.domainAccent);
 
                   return (
                     <button
@@ -178,12 +180,9 @@ export function WeekGrid({
                       style={{
                         top,
                         height,
-                        borderColor: withAlpha(event.domainAccent, selected ? 0.9 : 0.4),
-                        background: `linear-gradient(150deg, ${withAlpha(event.domainAccent, 0.42)}, ${withAlpha(
-                          event.domainAccent,
-                          0.16,
-                        )})`,
-                        boxShadow: `inset 2px 0 0 0 ${event.domainAccent}`,
+                        borderColor: withAlpha(accent, selected ? 0.7 : 0.3),
+                        backgroundColor: withAlpha(accent, 0.14),
+                        boxShadow: `inset 3px 0 0 0 ${accent}`,
                       }}
                       title={`${event.title} (${duration}m) · ${timeLabel(event.start, timeZone)} – ${timeLabel(
                         event.end,
@@ -193,7 +192,7 @@ export function WeekGrid({
                       <div className="flex items-center gap-1 min-w-0">
                         <span
                           className="h-1.5 w-1.5 shrink-0 rounded-full"
-                          style={{ backgroundColor: event.domainAccent }}
+                          style={{ backgroundColor: accent }}
                         />
                         <span className="truncate text-[0.7rem] font-semibold leading-tight text-white/95">
                           {event.title}

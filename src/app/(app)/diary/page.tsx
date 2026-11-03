@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { BookOpen, Feather, Flame, Lightbulb, Sparkles, TrendingUp, Users } from "lucide-react";
+import { BookOpen, Feather, Sparkles, TrendingUp } from "lucide-react";
 import { requireProfile } from "@/lib/auth";
 import { diaryEnabled } from "@/lib/diary/flags";
 import {
@@ -12,8 +12,7 @@ import {
   sparkForToday,
   stampCollection,
 } from "@/lib/diary/service";
-import { DIARY_ACCENT, SAFETY_FOOTER } from "@/lib/diary/constants";
-import { withAlpha } from "@/lib/utils";
+import { DIARY_ACCENT } from "@/lib/diary/constants";
 import { PageBanner } from "@/components/shell/PageBanner";
 import { DiaryTabs, DiaryEmpty, StampGrid, StampRow, excerpt, formatDiaryDate } from "@/components/diary/ui";
 import { DismissArtifact, NewEntryButton } from "@/components/diary/DiaryActions";
@@ -48,7 +47,7 @@ export default async function DiaryHomePage() {
         title="Diary"
         subtitle="Write freely. A quiet layer colours the page and never talks back unless you ask."
         accent={DIARY_ACCENT}
-        aside={
+        aside={stats.total > 0 ? (
           <div className="hidden gap-4 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-right sm:flex">
             <div>
               <p className="font-display text-[0.95rem] font-semibold text-white">{stats.daysWritten30}</p>
@@ -59,12 +58,12 @@ export default async function DiaryHomePage() {
               <p className="text-[0.55rem] uppercase tracking-[0.14em] text-white/30">entries</p>
             </div>
           </div>
-        }
+        ) : undefined}
       />
 
       <DiaryTabs active="/diary" />
 
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,0.85fr)] lg:items-start">
+      <div className={`grid gap-3 lg:items-start ${stamps.length > 0 || seeds.length > 0 ? "lg:grid-cols-[minmax(0,1.5fr)_minmax(0,0.85fr)]" : "lg:grid-cols-1"}`}>
         <div className="space-y-3">
           {today ? (
             <Link
@@ -186,7 +185,8 @@ export default async function DiaryHomePage() {
           )}
         </div>
 
-        <div className="space-y-3">
+        {(stamps.length > 0 || seeds.length > 0) && <div className="space-y-3">
+          {stamps.length > 0 && (
           <section className="surface p-4">
             <h2 className="font-display text-[0.9rem] font-semibold text-white">Stamp collection</h2>
             <p className="mt-0.5 text-[0.62rem] text-white/30">Your routines, as they accumulated.</p>
@@ -194,67 +194,25 @@ export default async function DiaryHomePage() {
               <StampGrid stamps={stamps} />
             </div>
           </section>
+          )}
 
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
-            <Link
-              href="/diary/burn"
-              className="rounded-2xl border border-rose-400/20 bg-rose-500/[0.06] p-3.5 transition hover:border-rose-300/40"
-            >
-              <Flame className="h-4 w-4 text-rose-300" />
-              <p className="mt-1.5 text-[0.8rem] font-semibold text-white/85">Burn Diary</p>
-              <p className="mt-0.5 text-[0.65rem] leading-relaxed text-white/35">
-                Write it, lose it, keep one line. The original is never stored.
-              </p>
-            </Link>
-            <Link
-              href="/diary/stories"
-              className="rounded-2xl border border-white/10 bg-white/[0.03] p-3.5 transition hover:border-white/25"
-            >
-              <BookOpen className="h-4 w-4 text-amber-200/70" />
-              <p className="mt-1.5 text-[0.8rem] font-semibold text-white/85">Monthly stories</p>
-              <p className="mt-0.5 text-[0.65rem] leading-relaxed text-white/35">
-                Last month, retold as a short fable. Clearly fictionalised.
-              </p>
-            </Link>
-          </div>
-
-          <section className="surface p-4">
+          {seeds.length > 0 && <section className="surface p-4">
             <div className="flex items-center gap-2">
-              <Lightbulb className="h-3.5 w-3.5 text-emerald-300" />
-              <h2 className="font-display text-[0.9rem] font-semibold text-white">Idea shelf</h2>
+              <h2 className="font-display text-[0.9rem] font-semibold text-white">Saved ideas</h2>
             </div>
-            {seeds.length === 0 ? (
-              <p className="mt-2 text-[0.68rem] leading-relaxed text-white/30">
-                Seeds you keep from the Creative Collaborator land here.
-              </p>
-            ) : (
-              <ul className="mt-2 space-y-1.5">
-                {seeds.map((seed) => (
-                  <li
-                    key={seed.id}
-                    className="rounded-xl border border-white/[0.07] bg-white/[0.025] px-2.5 py-2 text-[0.72rem] leading-relaxed text-white/55"
-                  >
-                    {seed.body}
-                  </li>
-                ))}
-              </ul>
-            )}
+            <ul className="mt-2 space-y-1.5">
+              {seeds.map((seed) => (
+                <li
+                  key={seed.id}
+                  className="rounded-xl border border-white/[0.07] bg-white/[0.025] px-2.5 py-2 text-sm leading-relaxed text-white/65"
+                >
+                  {seed.body}
+                </li>
+              ))}
+            </ul>
           </section>
-
-          <section
-            className="rounded-2xl border p-3.5"
-            style={{ borderColor: withAlpha(DIARY_ACCENT, 0.2), backgroundColor: withAlpha(DIARY_ACCENT, 0.06) }}
-          >
-            <div className="flex items-center gap-1.5">
-              <Users className="h-3.5 w-3.5 text-amber-200/70" />
-              <p className="text-[0.62rem] font-bold uppercase tracking-[0.12em] text-amber-200/70">Your controls</p>
-            </div>
-            <p className="mt-1.5 text-[0.66rem] leading-relaxed text-white/40">{SAFETY_FOOTER}</p>
-            <Link href="/diary/settings" className="mt-2 inline-block text-[0.66rem] font-semibold text-amber-200/80">
-              Open diary settings →
-            </Link>
-          </section>
-        </div>
+          }
+        </div>}
       </div>
     </div>
   );

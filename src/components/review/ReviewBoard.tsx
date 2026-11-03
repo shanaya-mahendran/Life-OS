@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { CalendarPlus, Loader2, Lightbulb, TriangleAlert } from "lucide-react";
 import { withAlpha } from "@/lib/utils";
 import { ProgressRing } from "@/components/today/ProgressRing";
@@ -100,10 +101,19 @@ export function ReviewBoard(props: ReviewBoardProps) {
   }
 
   const focusDelta = props.focusMinutes - props.previousFocusMinutes;
+  const hasActivity = props.plannedCount > 0 || props.done > 0 || props.slipped > 0 || props.focusMinutes > 0;
+  const hasReviewContent =
+    hasActivity ||
+    props.perDomain.length > 0 ||
+    props.insights.length > 0 ||
+    props.deadlineTasks.length > 0 ||
+    proposals.length > 0;
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-3">
+      {hasReviewContent ? (
+      <>
+      {hasActivity && <div className="grid gap-3 sm:grid-cols-3">
         <div className="surface col-span-1 flex items-center gap-3 p-3.5 sm:col-span-1">
           <ProgressRing value={props.adherence} accent="#8b5cf6" size={96} label="adherence" />
           <div className="min-w-0">
@@ -123,10 +133,10 @@ export function ReviewBoard(props: ReviewBoardProps) {
             tone={focusDelta >= 0 ? "mint" : "amber"}
           />
         </div>
-      </div>
+      </div>}
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-        <section className="surface p-4">
+        {(props.perDomain.length > 0 || props.insights.length > 0) && <section className="surface p-4">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-display text-[0.98rem] font-semibold text-white">By domain</h2>
             <span className="text-[0.62rem] text-white/30">planned time this week</span>
@@ -184,7 +194,7 @@ export function ReviewBoard(props: ReviewBoardProps) {
               </ul>
             </div>
           )}
-        </section>
+        </section>}
 
         <div className="space-y-3">
           <section className="surface p-4">
@@ -263,7 +273,7 @@ export function ReviewBoard(props: ReviewBoardProps) {
             )}
           </section>
 
-          <section className="surface p-4">
+          {(props.slippedTasks.length > 0 || props.deadlineTasks.length > 0) && <section className="surface p-4">
             <h2 className="mb-2 flex items-center gap-1.5 font-display text-[0.95rem] font-semibold text-white">
               <TriangleAlert className="h-3.5 w-3.5 text-amber-300" /> Carried over
             </h2>
@@ -297,9 +307,21 @@ export function ReviewBoard(props: ReviewBoardProps) {
                 </ul>
               </>
             )}
-          </section>
+          </section>}
         </div>
       </div>
+      </>
+      ) : (
+        <section className="surface flex flex-col items-start gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-white">Nothing to review yet</h2>
+            <p className="mt-1 text-sm text-white/65">Your weekly summary will appear after you plan or complete activity.</p>
+          </div>
+          <Link href="/calendar" className="btn btn-primary shrink-0">
+            Plan next week
+          </Link>
+        </section>
+      )}
 
       <ToastStack toasts={toasts} onDismiss={(id) => setToasts((current) => current.filter((item) => item.id !== id))} />
     </div>

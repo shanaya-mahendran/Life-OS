@@ -10,7 +10,7 @@ export const NAV_ITEMS = [
 ] as const;
 
 export const MOBILE_NAV = [
-  { href: "/today", label: "Home", icon: House },
+  { href: "/today", label: "Today", icon: House },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/chat", label: "Mochi", icon: Sparkles },
   { href: "/domains", label: "Domains", icon: LayoutGrid },

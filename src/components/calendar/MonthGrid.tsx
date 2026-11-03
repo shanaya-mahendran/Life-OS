@@ -2,6 +2,7 @@
 
 import type { UiEvent } from "@/lib/dto";
 import { cn, withAlpha } from "@/lib/utils";
+import { domainFamilyColor } from "@/lib/domains/presentation";
 import { utcToZoned } from "@/lib/time";
 import type { DayCell } from "./calendar-utils";
 import { timeLabel } from "./calendar-utils";
@@ -86,6 +87,7 @@ export function MonthGrid({ days, events, timeZone, selectedId, onSelectEvent, o
                         : duration % 60 === 0
                           ? `${duration / 60}h`
                           : `${Math.floor(duration / 60)}h ${duration % 60}m`;
+                    const accent = domainFamilyColor(event.domainSlug, event.domainAccent);
 
                     return (
                       <button
@@ -99,8 +101,8 @@ export function MonthGrid({ days, events, timeZone, selectedId, onSelectEvent, o
                           selectedId === event.id && "ring-1 ring-white/60",
                         )}
                         style={{
-                          borderColor: withAlpha(event.domainAccent, 0.35),
-                          backgroundColor: withAlpha(event.domainAccent, 0.16),
+                          borderColor: withAlpha(accent, 0.32),
+                          backgroundColor: withAlpha(accent, 0.14),
                         }}
                         title={`${event.title} (${durLabel}) · ${timeLabel(event.start, timeZone)} – ${timeLabel(
                           event.end,
@@ -109,7 +111,7 @@ export function MonthGrid({ days, events, timeZone, selectedId, onSelectEvent, o
                       >
                         <span
                           className="h-1.5 w-1.5 shrink-0 rounded-full"
-                          style={{ backgroundColor: event.domainAccent }}
+                          style={{ backgroundColor: accent }}
                         />
                         <span className="truncate text-[0.63rem] font-medium text-white/85">{event.title}</span>
                         <span className="ml-auto shrink-0 text-[0.55rem] font-medium text-white/45">
