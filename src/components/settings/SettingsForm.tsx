@@ -3,10 +3,9 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Download, Loader2, LogOut, RotateCcw, Save, ShieldCheck, Sparkles } from "lucide-react";
+import { Download, Loader2, RotateCcw, Save, ShieldCheck, Sparkles } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { ToastStack, type ToastMessage } from "@/components/ui/Toast";
-import { signOutUser } from "@/lib/auth-client";
 
 const TIMEZONES = [
   "Asia/Kolkata",
@@ -270,15 +269,6 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
           <p className="mt-0.5 text-[0.72rem] text-white/35">
             Signed in as <span className="font-medium text-white/70">{values.email}</span>
           </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => void signOutUser()}
-              className="btn border border-rose-400/35 bg-rose-500/15 text-[0.78rem] font-medium text-rose-100 hover:bg-rose-500/25"
-            >
-              <LogOut className="h-3.5 w-3.5" /> Sign out of account
-            </button>
-          </div>
         </section>
       </div>
 

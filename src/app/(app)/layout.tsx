@@ -11,17 +11,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (!profile.onboardedAt) redirect("/onboarding");
 
-  const [domains, tasks] = await Promise.all([
-    prisma.domain.findMany({
-      where: { userId: profile.id },
-      orderBy: { sortOrder: "asc" },
-      select: { slug: true, name: true, accent: true, isProtected: true },
-    }),
-    prisma.task.findMany({
+  const tasks = await prisma.task.findMany({
       where: { userId: profile.id },
       select: { status: true, dueDate: true },
-    }),
-  ]);
+    });
 
   const total = tasks.length || 1;
   const done = tasks.filter((task) => task.status === "done").length;
@@ -36,8 +29,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <AppShell
       userName={profile.name ?? profile.email}
-      domains={domains}
       adherence={adherence}
+      taskCount={tasks.length}
       notificationCount={notificationCount}
       features={{ ...resetFeatures(), diary: diaryEnabled() }}
     >

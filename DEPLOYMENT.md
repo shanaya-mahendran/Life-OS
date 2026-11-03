@@ -1,6 +1,6 @@
 # Deploying LifeOS to Vercel
 
-This guide walks you through deploying **LifeOS Agent** to [Vercel](https://vercel.com) with Supabase (Auth & Postgres) and DeepSeek.
+This guide walks you through deploying **LifeOS Agent** to [Vercel](https://vercel.com) with Supabase (Auth & Postgres) and an optional OpenRouter or Groq model provider.
 
 ---
 
@@ -9,7 +9,7 @@ This guide walks you through deploying **LifeOS Agent** to [Vercel](https://verc
 - A [Vercel](https://vercel.com) account
 - A GitHub repository containing this code
 - Your [Supabase](https://supabase.com) project credentials
-- Your [DeepSeek](https://platform.deepseek.com) API key (optional for LLM agent; falls back to the deterministic rules engine if omitted or empty balance)
+- An [OpenRouter](https://openrouter.ai) API key (optional; falls back to Groq if configured, then the deterministic rules engine)
 
 ---
 
@@ -51,15 +51,18 @@ Add the following environment variables under **Settings → Environment Variabl
 | `DATABASE_URL` | Postgres pooler connection string | `postgresql://postgres.<project-ref>:<encoded-password>@aws-1-eu-central-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=10&pool_timeout=20` |
 | `DIRECT_URL` | Direct Postgres connection string | `postgresql://postgres.<project-ref>:<encoded-password>@aws-1-eu-central-1.pooler.supabase.com:5432/postgres` |
 | `NEXT_PUBLIC_APP_URL` | Production URL of your app | `https://your-project.vercel.app` |
-| `DEEPSEEK_API_KEY` | DeepSeek API Key | `sk-...` (server-side only) |
-| `DEEPSEEK_BASE_URL` | DeepSeek Base URL | `https://api.deepseek.com` |
-| `DEEPSEEK_MODEL` | DeepSeek Model | `deepseek-chat` |
+| `OPENROUTER_API_KEY` | Preferred OpenRouter API key | Server-side only |
+| `OPENROUTER_API_KEY_2` | Optional second OpenRouter key for failover | Server-side only |
+| `OPENROUTER_MODEL` | OpenRouter model | Defaults to `openai/gpt-4o` |
+| `GROQ_API_KEY` | Optional fallback Groq API key | Server-side only |
+| `GROQ_API_KEY_2` | Optional second Groq key for failover | Server-side only |
+| `GROQ_MODEL` | Groq fallback model | Defaults to `openai/gpt-oss-120b` |
 | `CRON_SECRET` | Secret token for Vercel Cron jobs | Generate random hex: `openssl rand -hex 32` |
 | `MONTHLY_TOKEN_BUDGET` | Max LLM tokens per user per month | `2000000` |
 | `RESET_PLAN_ENABLED` / `HABIT_TRACKER_ENABLED` | Show the Reset Plan and Habit Tracker sections | `true` (set `false` to hide) |
 | `DIARY_ENABLED` | Show the Diary section | `true` (set `false` to hide) |
 | `DIARY_AI_ENABLED` | Master switch for every diary model call | `true` |
-| `DIARY_MODEL` | Optional model override for the diary layer | defaults to `GROQ_MODEL` |
+| `DIARY_MODEL` | Optional model override for the diary layer | Defaults to the active agent model |
 
 > [!NOTE]
 > Ensure special characters in the database password (such as `'`, `"`, `,`) are URL-encoded (`%27`, `%22`, `%2C`) in `DATABASE_URL` and `DIRECT_URL`.
@@ -103,4 +106,4 @@ In the [Supabase Dashboard](https://supabase.com/dashboard):
 
   The free plan allows only **two** cron jobs, so the daily brief job also runs the Reset check-in/review sweep, the diary trend draft on Mondays and, on the 1st, the monthly reset report and diary story. The dedicated endpoints (`/api/cron/reset-*`, `/api/cron/diary-*`) still exist for manual runs or a plan that allows more jobs — add them to `vercel.json` only if your plan supports it.
   Vercel automatically sends `Authorization: Bearer <CRON_SECRET>` for scheduled triggers.
-- **Resilient AI Execution**: If DeepSeek experiences rate limits or balance limits, LifeOS seamlessly degrades to its deterministic scheduling rules engine without crashing.
+- **Resilient AI Execution**: If configured model keys experience rate limits or balance limits, LifeOS tries the next key before falling back to its deterministic scheduling rules engine.

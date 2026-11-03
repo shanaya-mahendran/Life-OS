@@ -1,21 +1,28 @@
 /**
- * AI / Groq adapter with Multi-Key Pool & Load Balancing.
+ * OpenAI-compatible provider adapter with multi-key failover.
  *
  * Server-only: API keys must never reach the browser.
- * Uses Groq's high-speed inference engine (Llama-3.3 / GPT-OSS).
- * Supports automatic round-robin rotation and seamless failover
- * when a key hits rate limits (HTTP 429) or quota errors.
+ * Prefers OpenRouter when configured, then retains Groq as a fallback pool.
+ * Keys rotate on each request and unhealthy keys enter a short cooldown.
  */
 
 import OpenAI from "openai";
 
 export const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
 export const GROQ_DEFAULT_MODEL = process.env.GROQ_MODEL ?? "openai/gpt-oss-120b";
+export const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
+export const OPENROUTER_DEFAULT_MODEL = process.env.OPENROUTER_MODEL ?? "openai/gpt-4o";
 
-export const AGENT_MODEL = process.env.GROQ_MODEL ?? GROQ_DEFAULT_MODEL;
+interface ProviderCredential {
+  key: string;
+  provider: "OpenRouter" | "Groq";
+  baseURL: string;
+  model: string;
+}
 
 interface KeyEntry {
   key: string;
+  provider: ProviderCredential["provider"];
   client: OpenAI;
   model: string;
   cooldownUntil: number;
@@ -24,37 +31,68 @@ interface KeyEntry {
 let keyPool: KeyEntry[] | null = null;
 let currentKeyIndex = 0;
 
-/** Extract all configured Groq keys from environment variables. */
-export function getConfiguredKeys(): string[] {
-  const rawKeys: (string | undefined)[] = [
-    process.env.GROQ_API_KEY,
-    process.env.GROQ_API_KEY_2,
-    process.env.GROQ_API_KEY_3,
-    ...(process.env.GROQ_API_KEYS ? process.env.GROQ_API_KEYS.split(/[,;\s]+/) : []),
-  ];
+function configuredProviderKeys(
+  values: (string | undefined)[],
+  provider: ProviderCredential["provider"],
+  baseURL: string,
+  model: string,
+): ProviderCredential[] {
+  const keys = values
+    .flatMap((value) => value?.split(/[,;\s]+/) ?? [])
+    .map((key) => key.trim())
+    .filter((key) => key.length > 5 && !key.startsWith("YOUR-"));
 
-  const unique = Array.from(
-    new Set(
-      rawKeys
-        .map((k) => k?.trim())
-        .filter((k): k is string => Boolean(k && k.length > 5 && !k.startsWith("YOUR-"))),
-    ),
+  return [...new Set(keys)].map((key) => ({ key, provider, baseURL, model }));
+}
+
+function getConfiguredCredentials(): ProviderCredential[] {
+  const openRouterKeys = configuredProviderKeys(
+    [
+      process.env.OPENROUTER_API_KEY,
+      process.env.OPENROUTER_API_KEY_2,
+      process.env.OPENROUTER_API_KEY_3,
+      process.env.OPENROUTER_API_KEYS,
+    ],
+    "OpenRouter",
+    OPENROUTER_BASE_URL,
+    OPENROUTER_DEFAULT_MODEL,
   );
+  const groqKeys = configuredProviderKeys(
+    [
+      process.env.GROQ_API_KEY,
+      process.env.GROQ_API_KEY_2,
+      process.env.GROQ_API_KEY_3,
+      process.env.GROQ_API_KEYS,
+    ],
+    "Groq",
+    GROQ_BASE_URL,
+    GROQ_DEFAULT_MODEL,
+  );
+  return [...openRouterKeys, ...groqKeys];
+}
 
-  return unique;
+/** Configured OpenRouter keys take precedence over the Groq key pool. */
+export function getConfiguredKeys(): string[] {
+  return getConfiguredCredentials().map(({ key }) => key);
 }
 
 function initPool(): KeyEntry[] {
-  const keys = getConfiguredKeys();
-  if (!keys.length) return [];
-
-  return keys.map((key) => {
+  return getConfiguredCredentials().map(({ key, provider, baseURL, model }) => {
     return {
       key,
-      model: GROQ_DEFAULT_MODEL,
+      provider,
+      model,
       client: new OpenAI({
         apiKey: key,
-        baseURL: GROQ_BASE_URL,
+        baseURL,
+        ...(provider === "OpenRouter"
+          ? {
+              defaultHeaders: {
+                "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "https://lifeos.app",
+                "X-Title": "LifeOS",
+              },
+            }
+          : {}),
         timeout: 45_000,
         maxRetries: 1,
       }),
@@ -64,14 +102,41 @@ function initPool(): KeyEntry[] {
 }
 
 function getPool(): KeyEntry[] {
-  if (!keyPool || keyPool.length !== getConfiguredKeys().length) {
+  const credentials = getConfiguredCredentials();
+  if (!keyPool || keyPool.length !== credentials.length) {
     keyPool = initPool();
   }
   return keyPool;
 }
 
+function orderedPoolIndices(pool: KeyEntry[]): number[] {
+  const hasOpenRouter = pool.some((entry) => entry.provider === "OpenRouter");
+  const now = Date.now();
+  return pool
+    .map((_, index) => index)
+    .sort((a, b) => {
+      const healthRank = (entry: KeyEntry) => (entry.cooldownUntil <= now ? 0 : 1);
+      const healthDifference = healthRank(pool[a]) - healthRank(pool[b]);
+      if (healthDifference) return healthDifference;
+
+      const providerRank = (entry: KeyEntry) =>
+        hasOpenRouter && entry.provider === "Groq" ? 1 : 0;
+      const rankDifference = providerRank(pool[a]) - providerRank(pool[b]);
+      if (rankDifference) return rankDifference;
+
+      const cooldownDifference = pool[a].cooldownUntil - pool[b].cooldownUntil;
+      if (cooldownDifference) return cooldownDifference;
+
+      const distanceA = (a - currentKeyIndex + pool.length) % pool.length;
+      const distanceB = (b - currentKeyIndex + pool.length) % pool.length;
+      return distanceA - distanceB;
+    });
+}
+
+export const AGENT_MODEL = getConfiguredCredentials()[0]?.model ?? GROQ_DEFAULT_MODEL;
+
 export function isAIConfigured(): boolean {
-  return getConfiguredKeys().length > 0;
+  return getConfiguredCredentials().length > 0;
 }
 export const isDeepSeekConfigured = isAIConfigured;
 
@@ -87,13 +152,11 @@ export const getDeepSeekKeyCount = getAIKeyCount;
 export function getAIClient(): OpenAI {
   const pool = getPool();
   if (!pool.length) {
-    throw new Error("No GROQ_API_KEY configured.");
+    throw new Error("No OpenRouter or GROQ_API_KEY configured.");
   }
 
   const now = Date.now();
-  // Find next key starting from currentKeyIndex that is not in cooldown
-  for (let attempt = 0; attempt < pool.length; attempt += 1) {
-    const idx = (currentKeyIndex + attempt) % pool.length;
+  for (const idx of orderedPoolIndices(pool)) {
     const entry = pool[idx];
     if (entry.cooldownUntil <= now) {
       currentKeyIndex = (idx + 1) % pool.length;
@@ -101,9 +164,14 @@ export function getAIClient(): OpenAI {
     }
   }
 
-  // All keys are in cooldown; return the one whose cooldown expires earliest
-  currentKeyIndex = (currentKeyIndex + 1) % pool.length;
-  return pool[currentKeyIndex].client;
+  // All keys are in cooldown; return the one whose cooldown expires earliest.
+  const nextIndex = pool.reduce(
+    (bestIndex, entry, index) =>
+      entry.cooldownUntil < pool[bestIndex].cooldownUntil ? index : bestIndex,
+    0,
+  );
+  currentKeyIndex = (nextIndex + 1) % pool.length;
+  return pool[nextIndex].client;
 }
 export const getDeepSeek = getAIClient;
 
@@ -117,14 +185,11 @@ export async function executeWithModelPool<T>(
 ): Promise<T> {
   const pool = getPool();
   if (!pool.length) {
-    throw new Error("No GROQ_API_KEY configured.");
+    throw new Error("No OpenRouter or GROQ_API_KEY configured.");
   }
 
   const now = Date.now();
-  // Order keys starting from round-robin pointer
-  const orderedIndices = pool.map((_, i) => (currentKeyIndex + i) % pool.length);
-  // Sort healthy keys first
-  orderedIndices.sort((a, b) => pool[a].cooldownUntil - pool[b].cooldownUntil);
+  const orderedIndices = orderedPoolIndices(pool);
 
   let lastError: unknown = null;
 
@@ -143,7 +208,7 @@ export async function executeWithModelPool<T>(
       entry.cooldownUntil = now + (isQuota ? 300_000 : isRateLimit ? 30_000 : 10_000);
 
       console.warn(
-        `[lifeos] Groq key #${idx + 1} failed (${isRateLimit ? "rate limit" : isQuota ? "quota" : "error"}), trying next key in pool...`,
+        `[lifeos] ${entry.provider} key #${idx + 1} failed (${isRateLimit ? "rate limit" : isQuota ? "quota" : "error"}), trying next key in pool...`,
       );
     }
   }

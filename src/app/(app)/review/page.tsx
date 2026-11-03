@@ -23,12 +23,6 @@ export default async function ReviewPage() {
         icon={<ChartColumn className="h-5 w-5" />}
         title="Weekly review"
         subtitle={`${review.rangeLabel} · planned versus done, slipped items and next week's plan.`}
-        aside={
-          <div className="hidden rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-right sm:block">
-            <p className="font-display text-[0.95rem] font-semibold text-white">{review.adherence}%</p>
-            <p className="text-[0.58rem] uppercase tracking-[0.16em] text-white/30">plan completed</p>
-          </div>
-        }
       />
 
       <ReviewBoard

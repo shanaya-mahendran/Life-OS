@@ -35,6 +35,17 @@ export interface ChatMessage {
   tone?: "normal" | "error";
 }
 
+interface ChatResponse {
+  error?: string;
+  reply: string;
+  logId?: string;
+  changes?: ChatChange[];
+  pending?: PendingLike | null;
+  engine?: string;
+  monthTokens?: number;
+  tokenBudget?: number;
+}
+
 interface ChatWorkspaceProps {
   initialMessages: ChatMessage[];
   timeZone: string;
@@ -133,7 +144,7 @@ export function ChatWorkspace({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ message: text }),
         });
-        const data = await response.json();
+        const data = (await response.json()) as ChatResponse;
 
         if (!response.ok) {
           setMessages((current) => [
@@ -160,6 +171,9 @@ export function ChatWorkspace({
           },
         ]);
         setSpend({ used: data.monthTokens ?? spend.used, budget: data.tokenBudget ?? spend.budget });
+        if (data.changes?.some((change) => change.kind === "event")) {
+          window.dispatchEvent(new Event("lifeos:calendar-changed"));
+        }
         router.refresh();
       } catch {
         setMessages((current) => [
@@ -187,6 +201,8 @@ export function ChatWorkspace({
         setToast({ text: data.message ?? data.error ?? "Nothing to undo.", tone: "error" });
         return;
       }
+      const lastChange = [...messages].reverse().find((message) => message.changes?.length)?.changes;
+      const revertedEvent = lastChange?.some((change) => change.kind === "event") ?? false;
       setMessages((current) => {
         const next = [...current];
         for (let index = next.length - 1; index >= 0; index -= 1) {
@@ -198,6 +214,9 @@ export function ChatWorkspace({
         return next;
       });
       setToast({ text: "Reverted your last change.", tone: "ok" });
+      if (revertedEvent) {
+        window.dispatchEvent(new Event("lifeos:calendar-changed"));
+      }
       router.refresh();
     } catch {
       setToast({ text: "Could not undo just now.", tone: "error" });
@@ -225,7 +244,7 @@ export function ChatWorkspace({
       )}
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
-        <section className="surface flex h-[calc(100dvh-11.5rem)] min-h-[32rem] flex-col overflow-hidden">
+        <section className="surface flex h-[calc(100dvh-14rem)] min-h-[24rem] flex-col overflow-hidden sm:h-[calc(100dvh-11.5rem)] sm:min-h-[32rem]">
           <header className="flex items-center gap-3 border-b border-white/[0.06] px-4 py-3">
             <span className="relative grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 text-white">
               <Bot className="h-4.5 w-4.5" />
@@ -233,9 +252,9 @@ export function ChatWorkspace({
             </span>
             <div className="min-w-0">
               <h2 className="font-display text-[0.95rem] font-semibold text-white">
-                Mochi <span className="text-[0.7rem] font-medium text-violet-300 ml-1">· AI Wingman</span>
+                Mochi <span className="ml-1 hidden text-[0.7rem] font-medium text-violet-300 sm:inline">· AI Wingman</span>
               </h2>
-              <p className="text-[0.66rem] text-white/40">
+              <p className="truncate text-[0.66rem] text-white/40">
                 {engine === "deepseek" ? `Online · ${model}` : "Online · rules engine (no API key needed)"}
               </p>
             </div>
@@ -244,22 +263,24 @@ export function ChatWorkspace({
                 type="button"
                 onClick={() => setClearConfirmOpen(true)}
                 disabled={clearing || messages.length === 0}
-                className="btn btn-ghost px-2.5 py-1.5 text-[0.7rem] text-violet-200 hover:text-white hover:bg-violet-600/20"
+                className="btn btn-ghost shrink-0 px-2 py-1.5 text-[0.7rem] text-violet-200 hover:text-white hover:bg-violet-600/20 sm:px-2.5"
                 title="Start a new chat"
+                aria-label="Start a new chat"
               >
                 <Plus className="h-3.5 w-3.5 text-violet-300" />
-                <span>New chat</span>
+                <span className="hidden sm:inline">New chat</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => void undoLast()}
                 disabled={undoing}
-                className="btn btn-ghost px-2.5 py-1.5 text-[0.7rem]"
+                className="btn btn-ghost shrink-0 px-2 py-1.5 text-[0.7rem] sm:px-2.5"
                 title="Undo the last agent change"
+                aria-label="Undo the last agent change"
               >
                 {undoing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
-                Undo last
+                <span className="hidden sm:inline">Undo last</span>
               </button>
             </div>
           </header>
@@ -428,7 +449,7 @@ export function ChatWorkspace({
               </span>
               <div>
                 <div className="text-[0.78rem] font-semibold text-white/85">
-                  {engine === "deepseek" ? "Groq AI online" : "Rules engine"}
+                  {engine === "deepseek" ? "AI model online" : "Rules engine"}
                 </div>
                 <div className="text-[0.62rem] text-white/35">
                   {engine === "deepseek" ? model : "Deterministic, no API key"}

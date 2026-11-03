@@ -129,7 +129,7 @@ export function HabitTracker({ habits, goals, domains, planActive, planDay, toda
     <div className="space-y-3.5">
       <section className="surface p-3.5">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="no-scrollbar flex flex-1 items-center gap-1 overflow-x-auto">
+          {items.length + goalItems.length > 0 && <div className="no-scrollbar flex flex-1 items-center gap-1 overflow-x-auto">
             {[
               { key: "all", label: "All", count: items.length + goalItems.length },
               { key: "plan", label: "Reset plan", count: planHabits.length },
@@ -153,7 +153,7 @@ export function HabitTracker({ habits, goals, domains, planActive, planDay, toda
                 </span>
               </button>
             ))}
-          </div>
+          </div>}
           <button type="button" onClick={() => setShowAdd(true)} className="btn btn-primary text-[0.72rem]">
             <Plus className="h-3.5 w-3.5" /> Add habit
           </button>
@@ -351,7 +351,7 @@ export function HabitTracker({ habits, goals, domains, planActive, planDay, toda
         </div>
       )}
 
-      {(filter === "all" || filter === "goals") && (
+      {(filter === "all" || filter === "goals") && goalItems.length > 0 && (
         <section className="surface p-4">
           <div className="flex flex-wrap items-center gap-2">
             <span className="grid h-8 w-8 place-items-center rounded-xl border border-emerald-400/25 bg-emerald-500/12 text-emerald-200">
@@ -363,9 +363,8 @@ export function HabitTracker({ habits, goals, domains, planActive, planDay, toda
             </div>
           </div>
 
-          {goalItems.length ? (
-            <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
-              {goalItems.map((goal) => (
+          <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
+            {goalItems.map((goal) => (
                 <Link
                   key={goal.id}
                   href={`/habits/goals/${goal.id}`}
@@ -390,20 +389,8 @@ export function HabitTracker({ habits, goals, domains, planActive, planDay, toda
                     </span>
                   </div>
                 </Link>
-              ))}
-            </div>
-          ) : (
-            <div className="mt-3 rounded-2xl border border-dashed border-white/10 px-4 py-7 text-center">
-              <p className="text-[0.78rem] font-medium text-white/50">No goal tracks yet.</p>
-              <p className="mt-1 text-[0.68rem] leading-relaxed text-white/30">
-                Goals come from Month 3 of the Reset Plan. Add a metric, unit and target in the plan builder and the
-                track appears here.
-              </p>
-              <Link href="/reset/builder" className="btn btn-ghost mt-2.5 text-[0.72rem]">
-                Open plan builder
-              </Link>
-            </div>
-          )}
+            ))}
+          </div>
         </section>
       )}
 

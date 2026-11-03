@@ -1,8 +1,6 @@
 import { Settings as SettingsIcon, Zap } from "lucide-react";
-import { prisma } from "@/lib/db";
 import { requireProfile } from "@/lib/auth";
 import { monthTokens } from "@/lib/agent/usage";
-import { AGENT_MODEL, getAIKeyCount, isAIConfigured } from "@/lib/agent/llm";
 import { PageBanner } from "@/components/shell/PageBanner";
 import { SettingsForm } from "@/components/settings/SettingsForm";
 import { PwaInstallCard } from "@/components/pwa/InstallButton";
@@ -12,11 +10,7 @@ export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const { profile, user } = await requireProfile();
-  const [used, logCount, eventCount] = await Promise.all([
-    monthTokens(profile.id, user.timezone),
-    prisma.agentLog.count({ where: { userId: profile.id } }),
-    prisma.event.count({ where: { userId: profile.id } }),
-  ]);
+  const used = await monthTokens(profile.id, user.timezone);
 
   const usagePercent =
     profile.monthlyTokenBudget > 0 ? Math.min(100, Math.round((used / profile.monthlyTokenBudget) * 100)) : 0;
@@ -27,49 +21,24 @@ export default async function SettingsPage() {
         icon={<SettingsIcon className="h-5 w-5" />}
         title="Settings"
         subtitle="Your rhythm, your agent, your data."
-        aside={
-          <div className="hidden rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-right sm:block">
-            <p className="text-[0.66rem] text-white/45">
-              {isAIConfigured()
-                ? `${AGENT_MODEL}${getAIKeyCount() > 1 ? ` · ${getAIKeyCount()} keys pooled` : ""}`
-                : "rules engine"}
-            </p>
-            <p className="mt-0.5 text-[0.58rem] uppercase tracking-[0.16em] text-white/25">agent engine</p>
-          </div>
-        }
       />
 
-      <PwaInstallCard />
-
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="surface flex items-center gap-3 p-3.5">
+      <section className="surface flex flex-wrap items-center gap-3 p-4" aria-label="Monthly usage">
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-violet-500/15 text-violet-200">
             <Zap className="h-4 w-4" />
           </span>
-          <div className="min-w-0">
-            <div className="font-display text-[0.95rem] font-semibold text-white">
-              {(used / 1000).toFixed(1)}K / {(profile.monthlyTokenBudget / 1000).toFixed(0)}K
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <span className="text-sm font-semibold text-white">Usage this month</span>
+              <span className="text-sm tabular-nums text-white/70">
+                {(used / 1000).toFixed(1)}K of {(profile.monthlyTokenBudget / 1000).toFixed(0)}K tokens
+              </span>
             </div>
-            <div className="text-[0.58rem] uppercase tracking-[0.14em] text-white/30">tokens this month</div>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10" role="progressbar" aria-label="Monthly token usage" aria-valuenow={usagePercent} aria-valuemin={0} aria-valuemax={100}>
+              <div className="h-full rounded-full bg-violet-300" style={{ width: `${usagePercent}%` }} />
+            </div>
           </div>
-          <div className="ml-auto h-10 w-1.5 overflow-hidden rounded-full bg-white/10">
-            <div
-              className="w-full rounded-full bg-gradient-to-b from-violet-300 to-fuchsia-400"
-              style={{ height: `${Math.max(3, usagePercent)}%`, marginTop: `${100 - Math.max(3, usagePercent)}%` }}
-            />
-          </div>
-        </div>
-
-        <div className="surface p-3.5">
-          <div className="font-display text-[0.95rem] font-semibold text-white">{logCount}</div>
-          <div className="text-[0.58rem] uppercase tracking-[0.14em] text-white/30">agent turns logged</div>
-        </div>
-
-        <div className="surface p-3.5">
-          <div className="font-display text-[0.95rem] font-semibold text-white">{eventCount}</div>
-          <div className="text-[0.58rem] uppercase tracking-[0.14em] text-white/30">events on the calendar</div>
-        </div>
-      </div>
+      </section>
 
       <SettingsForm
         initial={{
@@ -85,6 +54,8 @@ export default async function SettingsPage() {
           monthlyTokenBudget: profile.monthlyTokenBudget,
         }}
       />
+
+      <PwaInstallCard />
     </div>
   );
 }

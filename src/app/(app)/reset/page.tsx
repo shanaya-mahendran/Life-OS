@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { requireProfile } from "@/lib/auth";
 import { resetPlanEnabled } from "@/lib/reset/flags";
-import { resetFeatures } from "@/lib/reset/flags";
 import { getCurrentPlan, getLatestPlan } from "@/lib/reset/service";
 import { RESET_PHASES, RESET_ACCENT } from "@/lib/reset/constants";
 import { withAlpha } from "@/lib/utils";
@@ -44,7 +43,6 @@ export default async function ResetIntroPage() {
 
   const latest = await getLatestPlan(profile.id);
   const completed = latest?.status === "completed" ? latest : null;
-  const features = resetFeatures();
 
   return (
     <div className="space-y-4">
@@ -81,14 +79,6 @@ export default async function ResetIntroPage() {
               measures and proposes. You approve every change, and the plan stays yours.
             </p>
 
-            <div className="mt-4 flex flex-wrap gap-2">
-              {["3-step audit", "1-minute check-ins", "Review every 15 days", "Monthly reports"].map((item) => (
-                <span key={item} className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[0.68rem] text-white/55">
-                  <CheckCircle2 className="h-3 w-3 text-emerald-300" /> {item}
-                </span>
-              ))}
-            </div>
-
             <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center">
               <PlanActionButton
                 action={completed ? "new-cycle" : "start"}
@@ -100,11 +90,6 @@ export default async function ResetIntroPage() {
               {completed && (
                 <Link href="/reset/finish" className="btn btn-ghost justify-center text-[0.78rem]">
                   See the final result <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
-              )}
-              {features.habitTracker && (
-                <Link href="/habits" className="btn btn-ghost justify-center text-[0.78rem]">
-                  Open Habit Tracker
                 </Link>
               )}
             </div>
@@ -158,6 +143,14 @@ export default async function ResetIntroPage() {
         </div>
       </section>
 
+      <details className="surface group rounded-xl p-4 sm:p-5">
+        <summary className="cursor-pointer list-none text-sm font-semibold text-white marker:hidden">
+          <span className="flex items-center justify-between gap-3">
+            How it works
+            <span className="text-xs font-medium text-white/55 transition group-open:rotate-180">⌄</span>
+          </span>
+        </summary>
+        <div className="mt-4 space-y-4">
       <div className="grid gap-3 sm:grid-cols-3">
         {[
           {
@@ -257,6 +250,8 @@ export default async function ResetIntroPage() {
           <BookOpen className="h-3.5 w-3.5" /> See the audit
         </Link>
       </div>
+        </div>
+      </details>
     </div>
   );
 }

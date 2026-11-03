@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Sidebar, type SidebarDomain, type SidebarFeatures } from "./Sidebar";
+import { Sidebar, type SidebarFeatures } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { MobileTabs, ChatFab } from "./MobileTabs";
 import { CommandPalette } from "./CommandPalette";
@@ -11,14 +11,14 @@ import { MobileInstallBanner } from "@/components/pwa/InstallButton";
 
 interface AppShellProps {
   userName: string;
-  domains: SidebarDomain[];
   adherence: number;
+  taskCount: number;
   notificationCount: number;
   features?: SidebarFeatures;
   children: React.ReactNode;
 }
 
-export function AppShell({ userName, domains, adherence, notificationCount, features, children }: AppShellProps) {
+export function AppShell({ userName, adherence, taskCount, notificationCount, features, children }: AppShellProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -36,25 +36,10 @@ export function AppShell({ userName, domains, adherence, notificationCount, feat
   }, []);
 
   return (
-    <div className="relative flex min-h-dvh bg-[#06040e]">
-      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="aurora-blob left-[-10%] top-[-12%] h-[560px] w-[560px] animate-aurora bg-violet-700/25" />
-        <div className="aurora-blob bottom-[-18%] right-[-8%] h-[600px] w-[600px] animate-aurora bg-indigo-700/20" />
-        <div className="aurora-blob left-[45%] top-[30%] h-[420px] w-[420px] bg-fuchsia-700/10" />
-        <div
-          className="absolute inset-0 opacity-[0.13]"
-          style={{
-            backgroundImage:
-              "linear-gradient(rgba(255,255,255,0.14) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.14) 1px, transparent 1px)",
-            backgroundSize: "72px 72px",
-            maskImage: "radial-gradient(ellipse at 45% 20%, black, transparent 75%)",
-          }}
-        />
-      </div>
-
+    <div className="relative flex min-h-dvh bg-void">
       <Sidebar
-        domains={domains}
         adherence={adherence}
+        taskCount={taskCount}
         mobileOpen={menuOpen}
         onClose={() => setMenuOpen(false)}
         features={features}
@@ -69,7 +54,7 @@ export function AppShell({ userName, domains, adherence, notificationCount, feat
           onOpenNotifications={() => setNotificationsOpen(true)}
         />
         <MobileInstallBanner />
-        <main className="mx-auto w-full max-w-[100rem] flex-1 px-3 sm:px-4 lg:px-6 pt-3 sm:pt-5 pb-[calc(max(env(safe-area-inset-bottom,0px),16px)+6.5rem)] lg:pb-12">
+        <main className="mx-auto w-full max-w-[70rem] flex-1 px-4 pt-4 sm:px-6 sm:pt-6 lg:px-8 pb-[calc(max(env(safe-area-inset-bottom,0px),16px)+6.5rem)] lg:pb-12">
           {children}
         </main>
       </div>

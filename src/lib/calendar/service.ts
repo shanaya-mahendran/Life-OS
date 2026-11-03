@@ -21,6 +21,7 @@ import {
 import { findConflicts, needsConfirmation, type Conflict } from "./conflicts";
 import { findFreeSlots, type FreeSlot } from "./free-slots";
 import { expandOccurrences } from "./recurrence";
+import { eventStatusExclusions } from "./status-filter";
 import { serializeEvent, toCalendarEvent, toCalendarTask } from "./mappers";
 import type { CalendarEvent, CalendarTask } from "./types";
 
@@ -84,14 +85,14 @@ export async function listEvents(
   user: ServiceUser,
   range: { from: Date; to: Date; domainSlug?: string; includeSuggested?: boolean; includeCancelled?: boolean },
 ): Promise<CalendarEvent[]> {
+  const excludedStatuses = eventStatusExclusions(range);
   const rows = await prisma.event.findMany({
     where: {
       userId: user.id,
       ...(range.domainSlug
         ? { domain: { slug: range.domainSlug } }
         : {}),
-      ...(range.includeCancelled ? {} : { status: { not: "cancelled" } }),
-      ...(range.includeSuggested ? {} : { status: { not: "suggested" } }),
+      ...(excludedStatuses.length ? { status: { notIn: excludedStatuses } } : {}),
       OR: [
         { start: { lt: range.to }, end: { gt: range.from } },
         { recurrence: { not: null }, start: { lte: range.to } },

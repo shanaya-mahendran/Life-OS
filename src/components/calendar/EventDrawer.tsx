@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { CalendarPlus, Clock, Lock, Pencil, Repeat2, ShieldCheck, Sparkles, Trash2, X } from "lucide-react";
 import type { UiConflict, UiEvent } from "@/lib/dto";
 import { withAlpha } from "@/lib/utils";
+import { domainFamilyColor } from "@/lib/domains/presentation";
 import { formatRecurrence } from "@/lib/calendar/recurrence";
 import { dayLabel, rangeLabel } from "./calendar-utils";
 
@@ -38,17 +39,18 @@ export function EventDrawer({ event, timeZone, onClose, onEdit, onNudge, onDelet
   }, [event?.id, event]);
 
   if (!event) return null;
+  const accent = domainFamilyColor(event.domainSlug, event.domainAccent);
 
   return (
     <aside className="surface fixed inset-x-3 bottom-[calc(max(env(safe-area-inset-bottom,0px),12px)+5.5rem)] z-40 max-h-[68vh] overflow-y-auto p-4 shadow-2xl lg:sticky lg:inset-auto lg:bottom-auto lg:top-[5.2rem] lg:z-10 lg:max-h-[calc(100dvh-7rem)] lg:w-[21rem] lg:shrink-0">
       <div className="mb-3 flex items-start justify-between gap-2">
         <div
           className="flex items-center gap-2.5 rounded-xl border px-2.5 py-2"
-          style={{ borderColor: withAlpha(event.domainAccent, 0.35), backgroundColor: withAlpha(event.domainAccent, 0.14) }}
+          style={{ borderColor: withAlpha(accent, 0.35), backgroundColor: withAlpha(accent, 0.14) }}
         >
           <span
-            className="grid h-8 w-8 place-items-center rounded-lg text-[0.7rem] font-bold text-white"
-            style={{ backgroundColor: withAlpha(event.domainAccent, 0.55) }}
+            className="grid h-8 w-8 place-items-center rounded-lg text-[0.7rem] font-bold"
+            style={{ backgroundColor: withAlpha(accent, 0.16), color: accent }}
           >
             {event.domainName.slice(0, 2).toUpperCase()}
           </span>

@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Layers, Loader2, Plus, TriangleAlert } from 
 import type { UiConflict, UiEvent } from "@/lib/dto";
 import { addZonedDays, utcToZoned, zonedToUtc } from "@/lib/time";
 import { cn, withAlpha } from "@/lib/utils";
+import { domainFamilyColor } from "@/lib/domains/presentation";
 import { Modal } from "@/components/ui/Modal";
 import { ToastStack, type ToastMessage } from "@/components/ui/Toast";
 import { WeekGrid } from "./WeekGrid";
@@ -58,6 +59,7 @@ export function CalendarBoard({
   const [pendingWrite, setPendingWrite] = useState<PendingWrite | null>(null);
   const [busy, setBusy] = useState(false);
   const initialised = useRef(false);
+  const loadRevision = useRef(0);
 
   const pushToast = useCallback((text: string, tone: "success" | "error" = "success") => {
     setToasts((current) => [...current, { id: Date.now() + Math.random(), text, tone }]);
@@ -81,6 +83,7 @@ export function CalendarBoard({
   }, [view, anchor, timeZone]);
 
   const load = useCallback(async () => {
+    const request = ++loadRevision.current;
     setLoading(true);
     try {
       const response = await fetch(
@@ -89,11 +92,11 @@ export function CalendarBoard({
       );
       if (!response.ok) throw new Error("Could not load events");
       const data = (await response.json()) as { events: UiEvent[] };
-      setEvents(data.events);
+      if (request === loadRevision.current) setEvents(data.events);
     } catch {
-      pushToast("Could not refresh the calendar.", "error");
+      if (request === loadRevision.current) pushToast("Could not refresh the calendar.", "error");
     } finally {
-      setLoading(false);
+      if (request === loadRevision.current) setLoading(false);
     }
   }, [fromISO, toISO, pushToast]);
 
@@ -104,6 +107,22 @@ export function CalendarBoard({
     }
     void load();
   }, [fromISO, toISO, load]);
+
+  useEffect(() => {
+    const syncWhenVisible = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+    const interval = window.setInterval(syncWhenVisible, 15_000);
+    window.addEventListener("focus", syncWhenVisible);
+    window.addEventListener("lifeos:calendar-changed", syncWhenVisible);
+    document.addEventListener("visibilitychange", syncWhenVisible);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", syncWhenVisible);
+      window.removeEventListener("lifeos:calendar-changed", syncWhenVisible);
+      document.removeEventListener("visibilitychange", syncWhenVisible);
+    };
+  }, [load]);
 
   const visibleEvents = useMemo(
     () => events.filter((event) => !hiddenDomains.has(event.domainSlug)),
@@ -209,6 +228,7 @@ export function CalendarBoard({
           pushToast(data.error ?? "Could not cancel the event.", "error");
           return;
         }
+        setEvents((current) => current.filter((event) => event.id !== pendingWrite.eventId));
         setSelected(null);
         pushToast("Event cancelled — undo is available in chat.");
         setPendingWrite(null);
@@ -323,6 +343,7 @@ export function CalendarBoard({
                   <div className="scroll-thin max-h-[16rem] space-y-0.5 overflow-y-auto">
                     {domains.map((domain) => {
                       const visible = !hiddenDomains.has(domain.slug);
+                      const accent = domainFamilyColor(domain.slug, domain.accent);
                       return (
                         <button
                           key={domain.slug}
@@ -339,9 +360,8 @@ export function CalendarBoard({
                           <span
                             className="h-2 w-2 rounded-full transition"
                             style={{
-                              backgroundColor: visible ? domain.accent : "transparent",
-                              border: `1px solid ${domain.accent}`,
-                              boxShadow: visible ? `0 0 8px ${withAlpha(domain.accent, 0.6)}` : "none",
+                              backgroundColor: visible ? accent : "transparent",
+                              border: `1px solid ${accent}`,
                             }}
                           />
                           <span className={visible ? "" : "text-white/30"}>{domain.name}</span>
@@ -388,19 +408,7 @@ export function CalendarBoard({
             />
           )}
 
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-white/[0.05] pt-2">
-            {enabledDomains.slice(0, 9).map((domain) => (
-              <span key={domain.slug} className="flex items-center gap-1.5 text-[0.62rem] text-white/40">
-                <span
-                  className="h-1.5 w-1.5 rounded-full"
-                  style={{ backgroundColor: domain.accent, boxShadow: `0 0 6px ${withAlpha(domain.accent, 0.7)}` }}
-                />
-                {domain.name}
-              </span>
-            ))}
-            {enabledDomains.length > 9 && (
-              <span className="text-[0.62rem] text-white/25">+{enabledDomains.length - 9} more</span>
-            )}
+          <div className="mt-2 flex items-center justify-end border-t border-white/[0.05] pt-2">
             <span className="ml-auto hidden text-[0.6rem] text-white/25 sm:block">
               Drag a block to move it · click empty space to create
             </span>

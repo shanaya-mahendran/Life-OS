@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Activity, ArrowRight, CheckCircle2, Flame, RotateCcw, Sparkles, Target } from "lucide-react";
+import { Activity, CheckCircle2, Flame, Sparkles, Target } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { requireProfile } from "@/lib/auth";
 import { habitTrackerEnabled } from "@/lib/reset/flags";
@@ -47,7 +46,7 @@ export default async function HabitsPage() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+      {overview.habits.length + overview.goals.length > 0 && <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
         <StatCard
           label="Today"
           value={`${summary.todayDone} / ${summary.todayTotal}`}
@@ -76,7 +75,7 @@ export default async function HabitsPage() {
           icon={<Target className="h-3.5 w-3.5" />}
           accent="#38bdf8"
         />
-      </div>
+      </div>}
 
       <HabitTracker
         habits={overview.habits}
@@ -87,22 +86,6 @@ export default async function HabitsPage() {
         todayKey={overview.todayKey}
       />
 
-      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-3">
-        <span className="grid h-7 w-7 place-items-center rounded-lg bg-violet-500/12 text-violet-200">
-          <RotateCcw className="h-3.5 w-3.5" />
-        </span>
-        <p className="text-[0.68rem] leading-relaxed text-white/35">
-          {overview.planActive
-            ? `The Reset Plan is on day ${overview.planDay}. Plan habits read the same check-ins — no double entry, no drift between screens.`
-            : "No Reset Plan is running. Manual habits work on their own; the plan link activates when you start one."}
-        </p>
-        <Link
-          href={overview.planActive ? "/reset/plan" : "/reset"}
-          className="ml-auto inline-flex items-center gap-1 text-[0.68rem] font-semibold text-violet-300/70 hover:text-violet-200"
-        >
-          {overview.planActive ? "Open Reset Plan" : "Start Reset Plan"} <ArrowRight className="h-3 w-3" />
-        </Link>
-      </div>
     </div>
   );
 }

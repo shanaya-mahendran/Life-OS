@@ -19,7 +19,7 @@ export function Topbar({ userName, notificationCount, onOpenSearch, onOpenMenu, 
 
   return (
     <header
-      className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#070412]/85 px-4 backdrop-blur-2xl transition-all lg:px-6"
+      className="sticky top-0 z-40 border-b border-white/[0.08] bg-void px-4 backdrop-blur-xl transition-all lg:px-6"
       style={{
         paddingTop: "max(env(safe-area-inset-top, 0px), 8px)",
         paddingBottom: "8px",
@@ -82,7 +82,7 @@ export function Topbar({ userName, notificationCount, onOpenSearch, onOpenMenu, 
           <button
             onClick={onOpenNotifications}
             className="relative grid h-9 w-9 place-items-center rounded-xl border border-white/[0.07] bg-white/[0.04] text-white/60 transition hover:text-white"
-            aria-label="Open notifications"
+            aria-label={notificationCount > 0 ? `${notificationCount} unread notifications` : "Open notifications"}
           >
             <Bell className="h-4 w-4" />
             {notificationCount > 0 && (
