@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronRight, Clock3, Loader2, Plus, Star, Trash2, X } from "lucide-react";
 import { formatInZone, humanizeMinutes, zonedToUtc } from "@/lib/time";
 import { countActivePriorities } from "@/lib/tasks/priority";
+import { rollup } from "@/lib/tasks/rollup";
 import { cn } from "@/lib/utils";
 
 export interface BoardSubtask {
@@ -82,12 +83,14 @@ function TaskCard({
   task,
   timeZone,
   refresh,
+  onSubtasksChange,
   onRemove,
   rankControl,
 }: {
   task: BoardTask;
   timeZone: string;
   refresh: () => void;
+  onSubtasksChange: (subtasks: BoardSubtask[]) => void;
   onRemove: (id: string, undoAvailable: boolean) => void;
   rankControl?: {
     index: number;
@@ -213,6 +216,11 @@ function TaskCard({
         if (data.code === "DAILY_CAP") setDailyCapOverride(true);
         throw new Error(data.message ?? data.error ?? "Could not save subtask.");
       }
+      const savedSubtask = data.subtask as BoardSubtask;
+      const nextSubtasks = editingSubtaskId
+        ? task.subtasks.map((subtask) => subtask.id === editingSubtaskId ? savedSubtask : subtask)
+        : [...task.subtasks, savedSubtask];
+      onSubtasksChange(nextSubtasks);
       setSubtaskTitle("");
       setScheduledStart("");
       setEditingSubtaskId(null);
@@ -236,6 +244,8 @@ function TaskCard({
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message ?? data.error ?? "Could not update subtask.");
+      const updatedSubtask = data.subtask as BoardSubtask;
+      onSubtasksChange(task.subtasks.map((subtask) => subtask.id === id ? updatedSubtask : subtask));
       refresh();
     } catch (issue) {
       setError(issue instanceof Error ? issue.message : "Could not update subtask.");
@@ -652,8 +662,29 @@ export function MainTaskBoard({ tasks: initialTasks, domainSlug, domainName, tim
   }
 
   function refresh() {
-    setTasks(initialTasks);
     router.refresh();
+  }
+
+  function updateTaskSubtasks(taskId: string, subtasks: BoardSubtask[]) {
+    setTasks((current) => current.map((task) => {
+      if (task.id !== taskId) return task;
+      const deadline = asDate(task.deadline);
+      return {
+        ...task,
+        subtasks,
+        rollup: rollup({
+          deadline,
+          status: task.status,
+          subtasks: subtasks.map((subtask) => ({
+            id: subtask.id,
+            title: subtask.title,
+            durationMin: subtask.durationMin,
+            scheduledStart: asDate(subtask.scheduledStart),
+            status: subtask.status,
+          })),
+        }),
+      };
+    }));
   }
 
   async function undoDelete() {
@@ -754,7 +785,9 @@ export function MainTaskBoard({ tasks: initialTasks, domainSlug, domainName, tim
         </p>
       )}
       {displayedTasks.length ? displayedTasks.map((task, index) => (
-        <TaskCard key={task.id} task={task} timeZone={timeZone} refresh={refresh} onRemove={(id, canUndo) => {
+        <TaskCard key={task.id} task={task} timeZone={timeZone} refresh={refresh}
+          onSubtasksChange={(subtasks) => updateTaskSubtasks(task.id, subtasks)}
+          onRemove={(id, canUndo) => {
           setTasks((current) => current.filter((item) => item.id !== id));
           setUndoAvailable(canUndo);
           router.refresh();
