@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Check, Loader2, Plus, Save, Star, Target, Trash2, Zap } from "lucide-react";
 import { withAlpha } from "@/lib/utils";
 import { domainFamilyColor } from "@/lib/domains/presentation";
-import { TaskChecklist, type ChecklistTask } from "@/components/today/TaskChecklist";
+import { MainTaskBoard, type BoardTask } from "@/components/tasks/MainTaskBoard";
 import { ToastStack, type ToastMessage } from "@/components/ui/Toast";
 
 interface DomainWorkspaceProps {
@@ -17,7 +17,8 @@ interface DomainWorkspaceProps {
     notes: string;
     isProtected: boolean;
   };
-  tasks: ChecklistTask[];
+  tasks: BoardTask[];
+  timeZone: string;
   eventTypes: { title: string; minutes: number }[];
 }
 
@@ -25,7 +26,7 @@ type Tab = "goals" | "tasks" | "notes";
 
 let toastId = 0;
 
-export function DomainWorkspace({ domain, tasks, eventTypes }: DomainWorkspaceProps) {
+export function DomainWorkspace({ domain, tasks, eventTypes, timeZone }: DomainWorkspaceProps) {
   const accent = domainFamilyColor(domain.slug, domain.accent);
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("goals");
@@ -244,54 +245,12 @@ export function DomainWorkspace({ domain, tasks, eventTypes }: DomainWorkspacePr
 
       {tab === "tasks" && (
         <div className="space-y-2.5">
-          <TaskChecklist
+          <MainTaskBoard
             tasks={tasks}
-            showDomain={false}
-            emptyText="No tasks in this domain yet."
+            domainSlug={domain.slug}
+            domainName={domain.name}
+            timeZone={timeZone}
           />
-
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              void addTask();
-            }}
-            className="flex flex-wrap gap-2 rounded-xl border border-white/[0.07] bg-white/[0.03] p-2"
-          >
-            <input
-              value={taskTitle}
-              onChange={(event) => setTaskTitle(event.target.value)}
-              placeholder="Next concrete step…"
-              className="field min-w-[10rem] flex-1"
-            />
-            <select
-              value={taskMinutes}
-              onChange={(event) => setTaskMinutes(Number(event.target.value))}
-              className="field w-[6.5rem]"
-            >
-              {[15, 30, 45, 60, 90, 120].map((minutes) => (
-                <option key={minutes} value={minutes} className="bg-[#150f28]">
-                  {minutes} min
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={() => setTaskIsPriority(!taskIsPriority)}
-              title={taskIsPriority ? "Top Priority (Click to make Normal)" : "Normal Priority (Click to make Top Priority)"}
-              className={`flex items-center gap-1 rounded-xl border px-2.5 py-1 text-[0.72rem] transition ${
-                taskIsPriority
-                  ? "border-amber-400/50 bg-amber-400/20 text-amber-300"
-                  : "border-white/10 bg-white/5 text-white/50 hover:text-white"
-              }`}
-            >
-              <Star className={`h-3.5 w-3.5 ${taskIsPriority ? "fill-amber-400 text-amber-400" : ""}`} />
-              <span className="hidden sm:inline">{taskIsPriority ? "Top Priority" : "Priority"}</span>
-            </button>
-            <button type="submit" disabled={saving || !taskTitle.trim()} className="btn btn-primary">
-              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-              Add task
-            </button>
-          </form>
         </div>
       )}
 

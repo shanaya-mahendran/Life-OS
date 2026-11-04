@@ -18,6 +18,7 @@ export type PendingAction =
       minutes: number;
       description?: string;
       recurrence?: string | null;
+      recurrenceUntilISO?: string;
     }
   | { kind: "move"; eventId: string; title: string; startISO: string; minutes: number }
   | { kind: "cancel"; eventId: string; title: string }
@@ -59,6 +60,7 @@ export async function applyPendingAction(
       minutes: pending.minutes,
       description: pending.description ?? "",
       recurrence: pending.recurrence ?? null,
+      recurrenceUntil: pending.recurrenceUntilISO ? new Date(pending.recurrenceUntilISO) : null,
       source: "agent",
       force: true,
     });
@@ -143,7 +145,8 @@ export async function applyPendingAction(
 export function describePending(pending: PendingAction, timeZone: string): string {
   if (pending.kind === "create") {
     const start = isoLocal(new Date(pending.startISO), timeZone);
-    return `${pending.title} · ${start} · ${pending.minutes} min`;
+    const until = pending.recurrenceUntilISO ? ` · through ${isoLocal(new Date(pending.recurrenceUntilISO), timeZone).slice(0, 10)}` : "";
+    return `${pending.title} · ${start} · ${pending.minutes} min${until}`;
   }
   if (pending.kind === "move") {
     return `${pending.title} → ${isoLocal(new Date(pending.startISO), timeZone)}`;

@@ -1,10 +1,11 @@
-import { CalendarDays, House, LayoutGrid, MessageSquare, Settings, ChartColumn, Sparkles } from "lucide-react";
+import { CalendarDays, House, LayoutGrid, MessageSquare, Settings, ChartColumn, Sparkles, Star } from "lucide-react";
 
 export const NAV_ITEMS = [
   { href: "/today", label: "Today", icon: House },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/chat", label: "Mochi", icon: Sparkles },
   { href: "/domains", label: "Domains", icon: LayoutGrid },
+  { href: "/priorities", label: "Priorities", icon: Star },
   { href: "/review", label: "Weekly Review", icon: ChartColumn },
   { href: "/settings", label: "Settings", icon: Settings },
 ] as const;

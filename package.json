@@ -14,8 +14,9 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
+    "db:backfill-subtasks": "tsx scripts/backfill-main-task-subtasks.ts",
     "db:studio": "prisma studio",
-    "setup": "prisma generate && prisma db push && tsx prisma/seed.ts"
+    "setup": "prisma generate && prisma db push && tsx prisma/seed.ts && tsx scripts/backfill-main-task-subtasks.ts"
   },
   "dependencies": {
     "@prisma/client": "6.19.3",

@@ -82,7 +82,11 @@ export function EventDrawer({
         {event.recurrence && (
           <div className="flex items-center gap-2">
             <Repeat2 className="h-3.5 w-3.5 text-white/30" />
-            {formatRecurrence(event.recurrence)}
+            {formatRecurrence(
+              event.recurrence,
+              event.recurrenceUntil ? new Date(event.recurrenceUntil) : null,
+              timeZone,
+            )}
           </div>
         )}
         {event.location && (

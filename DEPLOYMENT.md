@@ -77,7 +77,13 @@ Make sure both URLs point to the **same Supabase project**: `DATABASE_URL` shoul
 npx prisma db push
 ```
 
-Confirm Prisma reports that the database is in sync. Do not add `prisma db push` to the Vercel build command; apply schema changes deliberately before deploying them.
+Confirm Prisma reports that the database is in sync, then run the legacy-task backfill against the same production database:
+
+```powershell
+npm run db:backfill-subtasks
+```
+
+The backfill carries legacy due dates and priority flags into the new task fields and creates a subtask for legacy task estimates, linking an existing scheduled event when available. It skips tasks that already have subtasks, so it can be safely rerun. Do not add `prisma db push` or the backfill to the Vercel build command; apply schema changes deliberately before deploying them.
 
 ---
 

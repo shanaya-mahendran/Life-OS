@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Brain, Clock, Lock } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { requireProfile } from "@/lib/auth";
-import { listEvents, listTasks } from "@/lib/calendar/service";
+import { listEvents } from "@/lib/calendar/service";
+import { listMainTasks } from "@/lib/tasks/service";
 import { getDomain } from "@/lib/domains/catalog";
 import { domainFamilyColor } from "@/lib/domains/presentation";
 import { addZonedDays, formatInZone, humanizeMinutes, minutesBetween, startOfWeekMonday } from "@/lib/time";
@@ -11,7 +12,7 @@ import { withAlpha } from "@/lib/utils";
 import { DomainIcon } from "@/components/domain/DomainIcon";
 import { DomainWorkspace } from "@/components/domain/DomainWorkspace";
 import { ProgressRing } from "@/components/today/ProgressRing";
-import type { ChecklistTask } from "@/components/today/TaskChecklist";
+import type { BoardTask } from "@/components/tasks/MainTaskBoard";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +35,7 @@ export default async function DomainPage({ params }: { params: Promise<{ slug: s
   const config = getDomain(slug);
   const [events, tasks, memories] = await Promise.all([
     listEvents(user, { from: addZonedDays(now, -1, tz), to: addZonedDays(now, 14, tz), domainSlug: slug }),
-    listTasks(user, { domainSlug: slug, includeDone: true }),
+    listMainTasks(user, { domainSlug: slug, includeDone: true }),
     prisma.memory.findMany({
       where: { userId: profile.id, domainId: domain.id },
       orderBy: { createdAt: "desc" },
@@ -53,15 +54,19 @@ export default async function DomainPage({ params }: { params: Promise<{ slug: s
   const nextSession = events.find((event) => event.start >= now) ?? null;
   const upcoming = events.filter((event) => event.start >= now).slice(0, 6);
 
-  const checklistTasks: ChecklistTask[] = tasks.map((task) => ({
+  const checklistTasks: BoardTask[] = tasks.map((task) => ({
+    rollup: task.rollup,
     id: task.id,
     title: task.title,
-    domainSlug: task.domainSlug,
-    domainName: task.domainName,
-    accent,
-    dueLabel: task.dueDate ? formatInZone(task.dueDate, tz, { day: "numeric", month: "short" }) : null,
+    domainSlug: task.domain.slug,
+    domainName: task.domain.name,
+    domainAccent: task.domain.accent,
+    notes: task.notes,
+    deadline: task.deadline,
+    isPriority: task.isPriority,
+    priorityRank: task.priorityRank,
     status: task.status,
-    estimateMinutes: task.estimateMinutes,
+    subtasks: task.subtasks,
   }));
 
   const goals = Array.isArray(domain.goals) ? (domain.goals as string[]) : [];
@@ -142,6 +147,7 @@ export default async function DomainPage({ params }: { params: Promise<{ slug: s
             isProtected: domain.isProtected,
           }}
           tasks={checklistTasks}
+          timeZone={tz}
           eventTypes={(config?.eventTypes ?? []).slice(0, 4)}
         />
 

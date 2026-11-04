@@ -31,12 +31,27 @@ export function parseRecurrence(rule: string | null | undefined): RecurrenceRule
   return null;
 }
 
-export function formatRecurrence(rule: string | null | undefined): string {
+export function formatRecurrence(
+  rule: string | null | undefined,
+  recurrenceUntil?: Date | null,
+  timeZone = "UTC",
+): string {
   const parsed = parseRecurrence(rule);
   if (!parsed) return "Does not repeat";
-  if (parsed.freq === "DAILY") return "Every day";
-  if (!parsed.byWeekday?.length) return "Every week";
-  return `Every ${parsed.byWeekday.map((day) => DAY_LABELS[day]).join(", ")}`;
+  const label =
+    parsed.freq === "DAILY"
+      ? "Every day"
+      : !parsed.byWeekday?.length
+        ? "Every week"
+        : `Every ${parsed.byWeekday.map((day) => DAY_LABELS[day]).join(", ")}`;
+  if (!recurrenceUntil) return label;
+  const through = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(recurrenceUntil);
+  return `${label} through ${through}`;
 }
 
 export function ruleFromWeekdays(weekdays: number[]): string {
@@ -71,7 +86,7 @@ export function expandOccurrences(
   }
 
   const baseLocal = utcToZoned(source.start, timeZone);
-  const hardStop = source.recurrenceUntil ?? new Date(rangeEnd.getTime() + 1);
+  const lastDay = source.recurrenceUntil ? dayKey(source.recurrenceUntil, timeZone) : null;
 
   const occurrences: { start: Date; end: Date }[] = [];
   let cursor = startOfZonedDay(rangeStart, timeZone);
@@ -98,7 +113,8 @@ export function expandOccurrences(
       );
       const end = new Date(start.getTime() + durationMs);
       const notBeforeSeries = start.getTime() >= startOfZonedDay(source.start, timeZone).getTime();
-      if (notBeforeSeries && start <= hardStop && start < rangeEnd && end > rangeStart) {
+      const withinSeries = !lastDay || dayKey(start, timeZone) <= lastDay;
+      if (notBeforeSeries && withinSeries && start < rangeEnd && end > rangeStart) {
         occurrences.push({ start, end });
       }
     }
