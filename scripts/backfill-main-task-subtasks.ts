@@ -1,6 +1,11 @@
 import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient();
+const directUrl = process.env.DIRECT_URL;
+if (!directUrl) {
+  throw new Error("DIRECT_URL is required for the task backfill so it uses the same database target as prisma db push.");
+}
+
+const prisma = new PrismaClient({ datasourceUrl: directUrl });
 
 async function main() {
   const tasks = await prisma.task.findMany({

@@ -83,7 +83,7 @@ Confirm Prisma reports that the database is in sync, then run the legacy-task ba
 npm run db:backfill-subtasks
 ```
 
-The backfill carries legacy due dates and priority flags into the new task fields and creates a subtask for legacy task estimates, linking an existing scheduled event when available. It skips tasks that already have subtasks, so it can be safely rerun. Do not add `prisma db push` or the backfill to the Vercel build command; apply schema changes deliberately before deploying them.
+The backfill carries legacy due dates and priority flags into the new task fields and creates a subtask for legacy task estimates, linking an existing scheduled event when available. It connects through `DIRECT_URL`, matching the schema-push target instead of relying on the potentially unreachable transaction pooler in `DATABASE_URL`. It skips tasks that already have subtasks, so it can be safely rerun. Do not add `prisma db push` or the backfill to the Vercel build command; apply schema changes deliberately before deploying them.
 
 ---
 
