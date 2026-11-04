@@ -43,14 +43,12 @@ export default async function TodayPage() {
   ]);
 
   const priorityTasks: BoardTask[] = mainTasks
-    .filter((task) => task.status !== "done")
     .sort((a, b) => {
       if (a.rollup.isOverdue !== b.rollup.isOverdue) return a.rollup.isOverdue ? -1 : 1;
       const aDue = a.deadline?.getTime() ?? a.dueDate?.getTime() ?? Number.MAX_SAFE_INTEGER;
       const bDue = b.deadline?.getTime() ?? b.dueDate?.getTime() ?? Number.MAX_SAFE_INTEGER;
       return aDue - bDue || (a.priorityRank ?? Number.MAX_SAFE_INTEGER) - (b.priorityRank ?? Number.MAX_SAFE_INTEGER);
     })
-    .slice(0, 3)
     .map((task) => ({
       rollup: task.rollup,
       id: task.id,
@@ -65,8 +63,6 @@ export default async function TodayPage() {
       status: task.status,
       subtasks: task.subtasks,
     }));
-  const activePriorityCount = mainTasks.filter((task) => task.status !== "done").length;
-
   const firstName = (profile.name ?? profile.email).split(" ")[0];
   const nowMinutes = (now.getTime() - overview.dayStart.getTime()) / 60_000;
   const openTaskCount = overview.tasks.filter((task) => task.status !== "done").length;
@@ -215,13 +211,8 @@ export default async function TodayPage() {
                 <Zap className="h-4 w-4 text-amber-400 fill-amber-400" />
                 <h2 className="font-display text-[0.98rem] font-bold text-white">Top Priorities</h2>
               </div>
-              {activePriorityCount > 0 && (
-                <span className="text-[0.68rem] font-semibold text-amber-300/80 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-400/20">
-                  {activePriorityCount} active
-                </span>
-              )}
               <Link href="/priorities" className="text-[0.68rem] font-semibold text-violet-300 hover:text-violet-200">
-                View all ({activePriorityCount})
+                View all
               </Link>
             </header>
 
@@ -230,6 +221,7 @@ export default async function TodayPage() {
               timeZone={tz}
               priorityView
               compact
+              maxVisible={3}
             />
           </section>
 
