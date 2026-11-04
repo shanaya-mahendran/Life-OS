@@ -16,6 +16,7 @@ import {
 import { Modal } from "@/components/ui/Modal";
 import { withAlpha } from "@/lib/utils";
 import { domainFamilyColor } from "@/lib/domains/presentation";
+import { recentChatHistory } from "@/lib/agent/history";
 import { ChangeCard, PendingCard, type ChatChange } from "./ChangeCard";
 
 interface PendingLike {
@@ -141,7 +142,10 @@ export function ChatWorkspace({
         const response = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: text }),
+          body: JSON.stringify({
+            message: text,
+            history: recentChatHistory(messages).map(({ role, content }) => ({ role, content })),
+          }),
         });
         const data = (await response.json()) as ChatResponse;
 
@@ -188,7 +192,7 @@ export function ChatWorkspace({
         setSending(false);
       }
     },
-    [nextId, router, sending, spend.budget, spend.used],
+    [messages, nextId, router, sending, spend.budget, spend.used],
   );
 
   async function undoLast() {

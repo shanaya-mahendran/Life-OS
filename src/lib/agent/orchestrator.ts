@@ -256,7 +256,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
 
   const messages: RawMessage[] = [
     { role: "system", content: system },
-    ...(input.history ?? []).slice(-8).map((turn) => ({ role: turn.role, content: turn.content }) as RawMessage),
+    ...(input.history ?? []).slice(-10).map((turn) => ({ role: turn.role, content: turn.content }) as RawMessage),
     { role: "user", content: input.message },
   ];
 
