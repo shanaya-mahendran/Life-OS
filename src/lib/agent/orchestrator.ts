@@ -64,6 +64,7 @@ const TOOL_INTENTS: Record<string, string> = {
   move_event: "move",
   cancel_event: "cancel",
   find_free_slots: "free_slots",
+  create_main_task: "task",
   create_task: "task",
   update_task: "complete",
   plan_backwards: "plan",

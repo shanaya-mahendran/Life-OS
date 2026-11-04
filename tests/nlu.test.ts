@@ -176,6 +176,7 @@ describe("detectIntent", () => {
     expect(detectIntent("Block 2 hours for the pitch tomorrow")).toBe("create");
     expect(detectIntent("Mark finish data structures revision as done")).toBe("complete");
     expect(detectIntent("Add a task to submit the scholarship form")).toBe("task");
+    expect(extractTitle("Add a task to submit the scholarship form")).toBe("submit scholarship form");
     expect(detectIntent("undo that")).toBe("undo");
   });
 });
