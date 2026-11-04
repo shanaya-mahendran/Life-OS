@@ -44,6 +44,38 @@ export type InverseOp =
       type: "restore_task";
       taskId: string;
       before: { title: string; status: string; dueDate: string | null; notes: string; priority: number };
+    }
+  | {
+      type: "restore_task_tree";
+      task: {
+        id: string;
+        userId: string;
+        domainId: string;
+        title: string;
+        notes: string;
+        dueDate: string | null;
+        estimateMinutes: number;
+        status: string;
+        priority: number;
+        deadline: string | null;
+        isPriority: boolean;
+        priorityRank: number | null;
+        linkedEventId: string | null;
+        completedAt: string | null;
+      };
+      subtasks: {
+        id: string;
+        taskId: string;
+        userId: string;
+        title: string;
+        notes: string;
+        durationMin: number;
+        scheduledStart: string | null;
+        status: string;
+        sortOrder: number;
+        calendarEventId: string | null;
+        completedAt: string | null;
+      }[];
     };
 
 export interface WriteResult {
@@ -310,6 +342,17 @@ export async function createEvent(user: ServiceUser, input: CreateEventInput): P
   if (end.getTime() <= input.start.getTime()) {
     return { ok: false, conflicts: [], requiresConfirmation: false, message: "End must be after start." };
   }
+  if (
+    input.recurrenceUntil &&
+    dayKey(input.recurrenceUntil, user.timezone) < dayKey(input.start, user.timezone)
+  ) {
+    return {
+      ok: false,
+      conflicts: [],
+      requiresConfirmation: false,
+      message: "The recurrence end date must be on or after the first event date.",
+    };
+  }
 
   const conflicts = await collectConflicts(user, {
     title: input.title,
@@ -389,6 +432,19 @@ export async function updateEvent(
   if (nextEnd.getTime() <= nextStart.getTime()) {
     return { ok: false, conflicts: [], requiresConfirmation: false, message: "End must be after start." };
   }
+  const linkedSubtask = await prisma.subtask.findFirst({
+    where: { calendarEventId: existing.id, userId: user.id },
+    include: { task: { select: { deadline: true, dueDate: true } } },
+  });
+  const linkedDeadline = linkedSubtask?.task.deadline ?? linkedSubtask?.task.dueDate;
+  if (linkedDeadline && nextEnd > linkedDeadline) {
+    return {
+      ok: false,
+      conflicts: [],
+      requiresConfirmation: false,
+      message: "This ends after the main task deadline.",
+    };
+  }
 
   const domainSlug = patch.domainSlug ?? existing.domain.slug;
   const domain = patch.domainSlug ? await requireDomain(user.id, patch.domainSlug) : null;
@@ -439,6 +495,12 @@ export async function updateEvent(
     },
     include: eventInclude,
   });
+  if (linkedSubtask) {
+    await prisma.subtask.update({
+      where: { id: linkedSubtask.id },
+      data: { scheduledStart: nextStart, durationMin: minutesBetween(nextStart, nextEnd) },
+    });
+  }
 
   return {
     ok: true,
@@ -462,6 +524,10 @@ export async function cancelEvent(user: ServiceUser, eventId: string): Promise<W
     where: { id: existing.id },
     data: { status: "cancelled" },
     include: eventInclude,
+  });
+  await prisma.subtask.updateMany({
+    where: { calendarEventId: existing.id, userId: user.id },
+    data: { calendarEventId: null, scheduledStart: null },
   });
 
   return {
@@ -608,6 +674,36 @@ export async function applyInverse(userId: string, operations: InverseOp[]): Pro
         },
       });
       applied += 1;
+    } else if (operation.type === "restore_task_tree") {
+      const task = operation.task;
+      await prisma.task.create({
+        data: {
+          id: task.id,
+          userId: task.userId,
+          domainId: task.domainId,
+          title: task.title,
+          notes: task.notes,
+          dueDate: task.dueDate ? new Date(task.dueDate) : null,
+          estimateMinutes: task.estimateMinutes,
+          status: task.status,
+          priority: task.priority,
+          deadline: task.deadline ? new Date(task.deadline) : null,
+          isPriority: task.isPriority,
+          priorityRank: task.priorityRank,
+          linkedEventId: task.linkedEventId,
+          completedAt: task.completedAt ? new Date(task.completedAt) : null,
+        },
+      });
+      if (operation.subtasks.length) {
+        await prisma.subtask.createMany({
+          data: operation.subtasks.map((subtask) => ({
+            ...subtask,
+            scheduledStart: subtask.scheduledStart ? new Date(subtask.scheduledStart) : null,
+            completedAt: subtask.completedAt ? new Date(subtask.completedAt) : null,
+          })),
+        });
+      }
+      applied += 1 + operation.subtasks.length;
     }
   }
   return applied;

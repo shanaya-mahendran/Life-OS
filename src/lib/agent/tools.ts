@@ -20,8 +20,16 @@ import {
   type InverseOp,
   type ServiceUser,
 } from "@/lib/calendar/service";
-import { addZonedDays, startOfZonedDay, utcToZoned, zonedToUtc } from "@/lib/time";
+import { addZonedDays, dayKey, startOfZonedDay, utcToZoned, zonedToUtc } from "@/lib/time";
 import { saveMemory, recallMemories } from "./memory";
+import {
+  acceptMainTaskSchedule,
+  createMainTask,
+  listMainTasks,
+  proposeMainTaskSchedule,
+  saveSubtask,
+} from "@/lib/tasks/service";
+import { findTaskMatches } from "./task-matching";
 
 export interface AgentContext {
   userId: string;
@@ -145,6 +153,23 @@ async function findTargetEvent(ctx: AgentContext, args: { eventId?: unknown; tit
   return scored[0]?.event ?? null;
 }
 
+async function findMainTask(ctx: AgentContext, args: { taskId?: unknown; title?: unknown }) {
+  const tasks = await listMainTasks(ctx.user, { includeDone: true });
+  const matches = findTaskMatches(tasks, args.taskId, args.title);
+  if (!args.taskId && !args.title) return { error: "Give me a task ID or enough of its title to identify it." };
+  if (!matches.length) return { error: "I could not find that main task." };
+  if (matches.length > 1) {
+    return {
+      ambiguity: matches.slice(0, 10).map((task) => ({
+        id: task.id,
+        title: task.title,
+        domain: task.domain.name,
+      })),
+    };
+  }
+  return { task: matches[0] };
+}
+
 function summarise(event: {
   title: string;
   domainSlug: string;
@@ -203,6 +228,7 @@ export const TOOLS: AgentTool[] = [
             status: event.status,
             protected: event.isProtected,
             recurring: Boolean(event.recurrence),
+            recurrenceUntil: event.recurrenceUntil ? dayKey(event.recurrenceUntil, ctx.user.timezone) : null,
           })),
         },
       };
@@ -224,6 +250,11 @@ export const TOOLS: AgentTool[] = [
         .string()
         .optional()
         .describe("Optional repeat rule: DAILY, WEEKLY or WEEKLY:MO,WE,FR."),
+      recurrenceUntil: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .optional()
+        .describe("Optional inclusive final calendar date for a recurring event, YYYY-MM-DD in the user's timezone."),
       force: z.boolean().optional().describe("Set true to force create despite non-blocking warnings."),
     }),
     async handler(args, ctx) {
@@ -235,6 +266,16 @@ export const TOOLS: AgentTool[] = [
       if (!start) return { data: { error: "Could not understand the start time." } };
 
       const end = typeof args.end === "string" ? parseWhen(args.end, ctx.user.timezone) ?? undefined : undefined;
+      const recurrenceUntilText = typeof args.recurrenceUntil === "string" ? args.recurrenceUntil : undefined;
+      const recurrenceUntilDate = recurrenceUntilText
+        ? parseWhen(recurrenceUntilText, ctx.user.timezone)
+        : undefined;
+      if (
+        recurrenceUntilText &&
+        (!recurrenceUntilDate || dayKey(recurrenceUntilDate, ctx.user.timezone) !== recurrenceUntilText)
+      ) {
+        return { data: { error: "Could not understand the recurrence end date. Use YYYY-MM-DD." } };
+      }
       let minutes = typeof args.minutes === "number" ? Math.round(args.minutes) : undefined;
       if (!minutes && end) {
         minutes = Math.max(15, Math.round((end.getTime() - start.getTime()) / 60_000));
@@ -248,6 +289,7 @@ export const TOOLS: AgentTool[] = [
         minutes: minutes ?? 60,
         description: typeof args.description === "string" ? args.description : "",
         recurrence: typeof args.recurrence === "string" && args.recurrence ? args.recurrence : null,
+        recurrenceUntil: recurrenceUntilDate ?? null,
         source: "agent",
         force: Boolean(args.force),
       });
@@ -281,6 +323,7 @@ export const TOOLS: AgentTool[] = [
             domain: event.domainSlug,
             start: isoLocal(event.start, ctx.user.timezone),
             end: isoLocal(event.end, ctx.user.timezone),
+            recurrenceUntil: event.recurrenceUntil ? dayKey(event.recurrenceUntil, ctx.user.timezone) : null,
           },
         },
         inverse: result.inverse ? [result.inverse] : undefined,
@@ -422,6 +465,299 @@ export const TOOLS: AgentTool[] = [
   },
 
   {
+    name: "query_tasks",
+    description: "List main tasks and their subtasks, optionally filtered by domain or priority.",
+    schema: z.object({
+      domain: z.string().optional(),
+      priorityOnly: z.boolean().optional(),
+      includeDone: z.boolean().optional(),
+    }),
+    async handler(args, ctx) {
+      const domainSlug =
+        typeof args.domain === "string" ? resolveDomainSlug(args.domain) : undefined;
+      if (typeof args.domain === "string" && !domainSlug) {
+        return { data: { error: "Unknown domain." } };
+      }
+      const tasks = await listMainTasks(ctx.user, {
+        domainSlug: domainSlug ?? undefined,
+        priority: args.priorityOnly === true,
+        includeDone: args.includeDone === true,
+      });
+      return {
+        data: {
+          tasks: tasks.slice(0, 100).map((task) => ({
+            id: task.id,
+            title: task.title,
+            domain: task.domain.name,
+            deadline: task.deadline ? isoLocal(task.deadline, ctx.user.timezone) : null,
+            priority: task.isPriority,
+            status: task.status,
+            progressPct: task.rollup.progressPct,
+            subtasks: task.subtasks.map((subtask) => ({
+              id: subtask.id,
+              title: subtask.title,
+              durationMin: subtask.durationMin,
+              scheduledStart: subtask.scheduledStart
+                ? isoLocal(subtask.scheduledStart, ctx.user.timezone)
+                : null,
+              status: subtask.status,
+            })),
+          })),
+        },
+      };
+    },
+  },
+
+  {
+    name: "create_main_task",
+    description: "Create a main task with an optional deadline and top-priority flag.",
+    schema: z.object({
+      domain: z.string(),
+      title: z.string().trim().min(1),
+      deadline: z.string().optional().describe("Deadline in the user's timezone."),
+      priority: z.boolean().optional(),
+      notes: z.string().optional(),
+    }),
+    async handler(args, ctx) {
+      const domainSlug = resolveDomainSlug(String(args.domain ?? ""));
+      if (!domainSlug) return { data: { error: "Unknown domain." } };
+      const deadline = typeof args.deadline === "string"
+        ? parseWhen(args.deadline, ctx.user.timezone)
+        : null;
+      if (typeof args.deadline === "string" && !deadline) {
+        return { data: { error: "Could not understand the deadline." } };
+      }
+      const result = await createMainTask(ctx.user, {
+        domainSlug,
+        title: String(args.title ?? ""),
+        deadline,
+        isPriority: args.priority === true,
+        notes: typeof args.notes === "string" ? args.notes : undefined,
+      });
+      if (!result.ok) return { data: { error: result.message } };
+      return {
+        data: {
+          saved: true,
+          task: {
+            id: result.task.id,
+            title: result.task.title,
+            domain: result.task.domain.name,
+            deadline: result.task.deadline
+              ? isoLocal(result.task.deadline, ctx.user.timezone)
+              : null,
+            priority: result.task.isPriority,
+          },
+        },
+      };
+    },
+  },
+
+  {
+    name: "add_subtask",
+    description: "Add a time-estimated subtask to a uniquely identified main task.",
+    schema: z.object({
+      taskId: z.string().optional(),
+      taskTitle: z.string().optional(),
+      title: z.string().trim().min(1),
+      durationMin: z.number().int().min(5).max(720).multipleOf(5),
+      scheduledStart: z.string().optional().describe("Optional start in the user's timezone."),
+      notes: z.string().optional(),
+    }),
+    async handler(args, ctx) {
+      const resolved = await findMainTask(ctx, { taskId: args.taskId, title: args.taskTitle });
+      if ("error" in resolved) return { data: { error: resolved.error } };
+      if ("ambiguity" in resolved) {
+        return { data: { needsClarification: true, matches: resolved.ambiguity } };
+      }
+      const scheduledStart = typeof args.scheduledStart === "string"
+        ? parseWhen(args.scheduledStart, ctx.user.timezone)
+        : null;
+      if (typeof args.scheduledStart === "string" && !scheduledStart) {
+        return { data: { error: "Could not understand the subtask start time." } };
+      }
+      const result = await saveSubtask(ctx.user, resolved.task.id, {
+        title: String(args.title),
+        durationMin: Number(args.durationMin),
+        scheduledStart,
+        notes: typeof args.notes === "string" ? args.notes : undefined,
+      });
+      if (!result.ok) {
+        return {
+          data: {
+            error: result.message,
+            conflicts: "conflicts" in result ? result.conflicts : undefined,
+            code: "code" in result ? result.code : undefined,
+          },
+        };
+      }
+      return {
+        data: {
+          saved: true,
+          parentTask: { id: resolved.task.id, title: resolved.task.title },
+          subtask: {
+            id: result.subtask.id,
+            title: result.subtask.title,
+            durationMin: result.subtask.durationMin,
+            scheduledStart: result.subtask.scheduledStart
+              ? isoLocal(result.subtask.scheduledStart, ctx.user.timezone)
+              : null,
+          },
+        },
+      };
+    },
+  },
+
+  {
+    name: "propose_task_schedule",
+    description:
+      "Find free calendar slots for unscheduled subtasks. Preview first; only pass confirm=true with the returned assignments after the user agrees.",
+    schema: z.object({
+      taskId: z.string().optional(),
+      taskTitle: z.string().optional(),
+      confirm: z.boolean().optional(),
+      assignments: z.array(z.object({
+        subtaskId: z.string(),
+        start: z.string(),
+      })).max(50).optional(),
+    }),
+    async handler(args, ctx) {
+      const resolved = await findMainTask(ctx, { taskId: args.taskId, title: args.taskTitle });
+      if ("error" in resolved) return { data: { error: resolved.error } };
+      if ("ambiguity" in resolved) {
+        return { data: { needsClarification: true, matches: resolved.ambiguity } };
+      }
+
+      if (args.confirm === true) {
+        const parsedInput = z.array(z.object({
+          subtaskId: z.string(),
+          start: z.string(),
+        })).max(50).safeParse(args.assignments);
+        if (!parsedInput.success || !parsedInput.data.length) {
+          return { data: { error: "Pass the exact proposed assignments to accept the schedule." } };
+        }
+        const parsedAssignments = parsedInput.data.map((assignment) => ({
+          subtaskId: assignment.subtaskId,
+          start: parseWhen(assignment.start, ctx.user.timezone),
+        }));
+        const assignments = parsedAssignments.filter(
+          (assignment): assignment is { subtaskId: string; start: Date } => assignment.start !== null,
+        );
+        if (assignments.length !== parsedAssignments.length) {
+          return { data: { error: "Pass the exact proposed assignments to accept the schedule." } };
+        }
+        const result = await acceptMainTaskSchedule(ctx.user, resolved.task.id, assignments, ctx.now);
+        if (!result.ok) {
+          return {
+            data: {
+              error: result.message,
+              scheduledCount: result.scheduledCount,
+            },
+          };
+        }
+        return { data: { saved: true, scheduledCount: result.scheduledCount } };
+      }
+
+      const result = await proposeMainTaskSchedule(ctx.user, resolved.task.id, ctx.now);
+      if (!result.ok) return { data: { error: result.message } };
+      return {
+        data: {
+          preview: true,
+          taskId: resolved.task.id,
+          taskTitle: resolved.task.title,
+          proposals: result.proposals.map((proposal) => ({
+            subtaskId: proposal.subtaskId,
+            title: proposal.title,
+            start: isoLocal(proposal.start, ctx.user.timezone),
+            end: isoLocal(proposal.end, ctx.user.timezone),
+          })),
+          unscheduledCount: result.unscheduledCount,
+          instruction: "Show the proposed times and ask the user to confirm before scheduling.",
+        },
+      };
+    },
+  },
+
+  {
+    name: "update_subtask",
+    description: "Update a uniquely identified subtask's title, duration, schedule, notes, or status.",
+    schema: z.object({
+      subtaskId: z.string().optional(),
+      titleMatch: z.string().optional(),
+      title: z.string().trim().min(1).optional(),
+      durationMin: z.number().int().min(5).max(720).multipleOf(5).optional(),
+      scheduledStart: z.string().nullable().optional(),
+      notes: z.string().optional(),
+      status: z.enum(["todo", "doing", "done"]).optional(),
+    }),
+    async handler(args, ctx) {
+      const tasks = await listMainTasks(ctx.user, { includeDone: true });
+      const subtaskId = typeof args.subtaskId === "string" ? args.subtaskId.trim() : "";
+      const titleMatch = typeof args.titleMatch === "string"
+        ? args.titleMatch.trim().toLowerCase()
+        : "";
+      const matches = tasks.flatMap((task) =>
+        task.subtasks
+          .filter((subtask) =>
+            subtaskId
+              ? subtask.id === subtaskId
+              : titleMatch && subtask.title.toLowerCase().includes(titleMatch),
+          )
+          .map((subtask) => ({ task, subtask })),
+      );
+      if (!matches.length) return { data: { error: "I could not find that subtask." } };
+      if (matches.length > 1) {
+        return {
+          data: {
+            needsClarification: true,
+            matches: matches.slice(0, 10).map(({ task, subtask }) => ({
+              id: subtask.id,
+              title: subtask.title,
+              parentTask: task.title,
+              domain: task.domain.name,
+            })),
+          },
+        };
+      }
+      const { task, subtask } = matches[0];
+      const scheduledStart = args.scheduledStart === null
+        ? null
+        : typeof args.scheduledStart === "string"
+          ? parseWhen(args.scheduledStart, ctx.user.timezone)
+          : subtask.scheduledStart;
+      if (typeof args.scheduledStart === "string" && !scheduledStart) {
+        return { data: { error: "Could not understand the subtask start time." } };
+      }
+      const result = await saveSubtask(
+        ctx.user,
+        task.id,
+        {
+          title: typeof args.title === "string" ? args.title : subtask.title,
+          durationMin: typeof args.durationMin === "number" ? args.durationMin : subtask.durationMin,
+          scheduledStart,
+          notes: typeof args.notes === "string" ? args.notes : subtask.notes,
+          status: typeof args.status === "string" ? args.status : subtask.status,
+        },
+        subtask.id,
+      );
+      if (!result.ok) return { data: { error: result.message, code: result.code } };
+      return {
+        data: {
+          saved: true,
+          task: task.title,
+          subtask: {
+            id: result.subtask.id,
+            title: result.subtask.title,
+            status: result.subtask.status,
+            scheduledStart: result.subtask.scheduledStart
+              ? isoLocal(result.subtask.scheduledStart, ctx.user.timezone)
+              : null,
+          },
+        },
+      };
+    },
+  },
+
+  {
     name: "create_task",
     description: "Add a task to a domain, optionally with a due date and estimate.",
     schema: z.object({
@@ -482,12 +818,20 @@ export const TOOLS: AgentTool[] = [
     }),
     async handler(args, ctx) {
       const tasks = await listTasks(ctx.user, { limit: 100 });
-      const taskId = typeof args.taskId === "string" ? args.taskId : undefined;
-      const needle = typeof args.title === "string" ? args.title.toLowerCase() : "";
-
-      const task =
-        tasks.find((candidate) => candidate.id === taskId) ??
-        tasks.find((candidate) => needle && candidate.title.toLowerCase().includes(needle));
+      const matches = findTaskMatches(tasks, args.taskId, args.title);
+      if (matches.length > 1) {
+        return {
+          data: {
+            needsClarification: true,
+            matches: matches.slice(0, 10).map((task) => ({
+              id: task.id,
+              title: task.title,
+              domain: task.domainName,
+            })),
+          },
+        };
+      }
+      const task = matches[0];
 
       if (!task) return { data: { error: "I could not find that task." } };
 

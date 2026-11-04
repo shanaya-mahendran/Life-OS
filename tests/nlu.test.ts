@@ -8,6 +8,7 @@ import {
   isNegative,
   parseDuration,
   parseRecurrenceText,
+  parseRecurrenceUntil,
   parseTimeRange,
   parseWhen,
   titleCase,
@@ -49,6 +50,21 @@ describe("parseWhen", () => {
     expect(local.month).toBe(11);
     expect(local.day).toBe(12);
     expect(local.hour).toBe(18);
+  });
+
+  it("uses the current day as the first occurrence when only a recurrence end date is given", () => {
+    const message = 'Create "ICT FINAL PROJECT" under Learning, every day from 7 pm to 9 pm until 15th of Nov';
+    const parsed = parseWhen(
+      message,
+      NOW,
+      TZ,
+    );
+    expect(parsed).not.toBeNull();
+    expect(utcToZoned(parsed!.date, TZ)).toMatchObject({ year: 2026, month: 11, day: 1, hour: 19, minute: 0 });
+    expect(parsed?.durationMinutes).toBe(120);
+    expect(detectDomain(message)).toBe("learning");
+    expect(extractTitle(message)).toBe("ICT FINAL PROJECT");
+    expect(parseRecurrenceText(message)).toBe("DAILY");
   });
 
   it("rolls a past month into next year", () => {
@@ -119,6 +135,21 @@ describe("parseRecurrenceText", () => {
     expect(parseRecurrenceText("every monday and thursday")).toBe("WEEKLY:MO,TH");
     expect(parseRecurrenceText("weekdays")).toBe("WEEKLY:MO,TU,WE,TH,FR");
     expect(parseRecurrenceText("karate tomorrow")).toBeNull();
+  });
+
+  describe("parseRecurrenceUntil", () => {
+    it("resolves an inclusive month/day cutoff in the user's timezone", () => {
+      const until = parseRecurrenceUntil("every day until 15th of Nov", NOW, TZ);
+      expect(until).not.toBeNull();
+      expect(utcToZoned(until!, TZ)).toMatchObject({ year: 2026, month: 11, day: 15, hour: 0, minute: 0 });
+    });
+
+    it("accepts explicit ISO dates and rejects invalid calendar dates", () => {
+      expect(parseRecurrenceUntil("daily through 2027-01-15", NOW, TZ)?.toISOString()).toBe(
+        "2027-01-14T18:30:00.000Z",
+      );
+      expect(parseRecurrenceUntil("daily through 2026-02-30", NOW, TZ)).toBeNull();
+    });
   });
 });
 

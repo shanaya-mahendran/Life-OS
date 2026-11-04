@@ -15,9 +15,10 @@ import { getDayOverview, getWeekStats, listEvents } from "@/lib/calendar/service
 import { addZonedDays, formatInZone, startOfWeekMonday } from "@/lib/time";
 import { withAlpha } from "@/lib/utils";
 import { domainFamilyColor } from "@/lib/domains/presentation";
-import { TaskChecklist, type ChecklistTask } from "@/components/today/TaskChecklist";
+import { MainTaskBoard, type BoardTask } from "@/components/tasks/MainTaskBoard";
 import { TodaySchedule } from "@/components/today/TodaySchedule";
 import { toUiEvent } from "@/lib/dto";
+import { listMainTasks } from "@/lib/tasks/service";
 
 export const metadata = { title: "Today · LifeOS" };
 export const dynamic = "force-dynamic";
@@ -28,7 +29,7 @@ export default async function TodayPage() {
   const tz = user.timezone;
 
   const weekStart = startOfWeekMonday(now, tz);
-  const [brief, overview, stats, domains, weekEvents] = await Promise.all([
+  const [brief, overview, stats, domains, weekEvents, mainTasks] = await Promise.all([
     buildMorningBrief(user, now),
     getDayOverview(user, now),
     getWeekStats(user, weekStart),
@@ -38,32 +39,33 @@ export default async function TodayPage() {
       select: { id: true, slug: true, name: true, accent: true, icon: true, isEnabled: true },
     }),
     listEvents(user, { from: now, to: addZonedDays(now, 7, tz) }),
+    listMainTasks(user, { priority: true, includeDone: true, now }),
   ]);
 
-  const domainIconBySlug = new Map(domains.map((row) => [row.slug, row.icon]));
-
-  const priorityTasks: ChecklistTask[] = overview.tasks
+  const priorityTasks: BoardTask[] = mainTasks
     .filter((task) => task.status !== "done")
     .sort((a, b) => {
-      const priority = b.priority - a.priority;
-      if (priority !== 0) return priority;
-      const aDue = a.dueDate?.getTime() ?? Number.MAX_SAFE_INTEGER;
-      const bDue = b.dueDate?.getTime() ?? Number.MAX_SAFE_INTEGER;
-      return aDue - bDue;
+      if (a.rollup.isOverdue !== b.rollup.isOverdue) return a.rollup.isOverdue ? -1 : 1;
+      const aDue = a.deadline?.getTime() ?? a.dueDate?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      const bDue = b.deadline?.getTime() ?? b.dueDate?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      return aDue - bDue || (a.priorityRank ?? Number.MAX_SAFE_INTEGER) - (b.priorityRank ?? Number.MAX_SAFE_INTEGER);
     })
-    .slice(0, 6)
+    .slice(0, 3)
     .map((task) => ({
+      rollup: task.rollup,
       id: task.id,
       title: task.title,
-      domainSlug: task.domainSlug,
-      domainName: task.domainName,
-      domainIcon: domainIconBySlug.get(task.domainSlug) ?? "sparkles",
-      accent: domainFamilyColor(task.domainSlug, task.domainAccent),
-      dueLabel: task.dueDate ? formatInZone(task.dueDate, tz, { day: "numeric", month: "short" }) : null,
+      domainSlug: task.domain.slug,
+      domainName: task.domain.name,
+      domainAccent: task.domain.accent,
+      deadline: task.deadline ?? task.dueDate,
+      isPriority: task.isPriority,
+      priorityRank: task.priorityRank,
+      notes: task.notes,
       status: task.status,
-      estimateMinutes: task.estimateMinutes,
-      priority: task.priority,
+      subtasks: task.subtasks,
     }));
+  const activePriorityCount = mainTasks.filter((task) => task.status !== "done").length;
 
   const firstName = (profile.name ?? profile.email).split(" ")[0];
   const nowMinutes = (now.getTime() - overview.dayStart.getTime()) / 60_000;
@@ -213,18 +215,21 @@ export default async function TodayPage() {
                 <Zap className="h-4 w-4 text-amber-400 fill-amber-400" />
                 <h2 className="font-display text-[0.98rem] font-bold text-white">Top Priorities</h2>
               </div>
-              {priorityTasks.length > 0 && (
+              {activePriorityCount > 0 && (
                 <span className="text-[0.68rem] font-semibold text-amber-300/80 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-400/20">
-                  {priorityTasks.length} active
+                  {activePriorityCount} active
                 </span>
               )}
+              <Link href="/priorities" className="text-[0.68rem] font-semibold text-violet-300 hover:text-violet-200">
+                View all ({activePriorityCount})
+              </Link>
             </header>
 
-            <TaskChecklist
+            <MainTaskBoard
               tasks={priorityTasks}
-              availableDomains={domainOptions}
-              allowQuickAdd={true}
-              emptyText="No priority tasks yet. Star a task or use '+ Add Top Priority Task' above!"
+              timeZone={tz}
+              priorityView
+              compact
             />
           </section>
 

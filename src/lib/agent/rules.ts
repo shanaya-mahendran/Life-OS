@@ -19,7 +19,7 @@ import {
   updateTask,
   type InverseOp,
 } from "@/lib/calendar/service";
-import { addZonedDays, formatInZone, startOfZonedDay, utcToZoned, zonedToUtc } from "@/lib/time";
+import { addZonedDays, dayKey, formatInZone, startOfZonedDay, utcToZoned, zonedToUtc } from "@/lib/time";
 import type { AgentContext, ChangeSummary } from "./tools";
 import { findEventByText, findTaskByText } from "./lookup";
 import { describePending, type PendingAction } from "./actions";
@@ -30,6 +30,7 @@ import {
   inferEventDuration,
   parseDuration,
   parseRecurrenceText,
+  parseRecurrenceUntil,
   parseWhen,
   titleCase,
 } from "./nlu";
@@ -185,6 +186,14 @@ async function handleCreate(ctx: AgentContext, message: string): Promise<RuleOut
     inferEventDuration(message, domainSlug);
   const minutes = Math.min(Math.max(duration, 15), 480);
   const recurrence = parseRecurrenceText(message);
+  const recurrenceUntil = recurrence ? parseRecurrenceUntil(message, ctx.now, ctx.user.timezone) : null;
+  if (recurrence && /\b(?:until|through|till)\b/.test(message.toLowerCase()) && !recurrenceUntil) {
+    return emptyOutcome(
+      "create",
+      "I couldn't understand the last date for that repeating event. Please give it as a day and month, such as “until November 15.”",
+      domainSlug,
+    );
+  }
 
   const result = await createEvent(ctx.user, {
     domainSlug,
@@ -193,6 +202,7 @@ async function handleCreate(ctx: AgentContext, message: string): Promise<RuleOut
     end: when.endDate ?? undefined,
     minutes,
     recurrence,
+    recurrenceUntil,
     source: "agent",
   });
 
@@ -205,6 +215,7 @@ async function handleCreate(ctx: AgentContext, message: string): Promise<RuleOut
         startISO: when.date.toISOString(),
         minutes,
         recurrence,
+        recurrenceUntilISO: recurrenceUntil?.toISOString(),
       };
       const reasons = result.conflicts.map((conflict) => `• ${conflict.message}`).join("\n");
       return {
@@ -215,14 +226,32 @@ async function handleCreate(ctx: AgentContext, message: string): Promise<RuleOut
         inverse: [],
         pending,
         state: "needs_confirmation",
-        toolCalls: [{ name: "create_event", args: { domain: domainSlug, title, start: when.date.toISOString(), minutes } }],
+        toolCalls: [
+          {
+            name: "create_event",
+            args: {
+              domain: domainSlug,
+              title,
+              start: when.date.toISOString(),
+              minutes,
+              recurrence,
+              recurrenceUntil: recurrenceUntil ? dayKey(recurrenceUntil, ctx.user.timezone) : undefined,
+            },
+          },
+        ],
       };
     }
     return emptyOutcome("create", result.message ?? "I could not create that block.", domainSlug);
   }
 
   const event = result.event!;
-  const repeatText = recurrence ? ` (repeating ${recurrence.replace("WEEKLY:", "").replace(",", " & ")})` : "";
+  const repeatText = recurrence
+    ? ` (repeating ${recurrence.replace("WEEKLY:", "").replace(",", " & ")}${
+        recurrenceUntil
+          ? ` through ${formatInZone(recurrenceUntil, ctx.user.timezone, { month: "long", day: "numeric", year: "numeric" })}`
+          : ""
+      })`
+    : "";
   return {
     reply: `Done — “${event.title}” is scheduled${repeatText} starting ${dayLabel(event.start, ctx.user.timezone)} from ${clockLabel(
       event.start,
@@ -244,6 +273,7 @@ async function handleCreate(ctx: AgentContext, message: string): Promise<RuleOut
           end: when.endDate?.toISOString(),
           minutes,
           recurrence,
+          recurrenceUntil: recurrenceUntil ? dayKey(recurrenceUntil, ctx.user.timezone) : undefined,
         },
       },
     ],

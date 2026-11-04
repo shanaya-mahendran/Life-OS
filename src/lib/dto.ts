@@ -17,6 +17,7 @@ export interface UiEvent {
   priority: number;
   location: string;
   recurrence: string | null;
+  recurrenceUntil: string | null;
 }
 
 export interface UiTask {
@@ -55,6 +56,7 @@ export function toUiEvent(event: CalendarEvent): UiEvent {
     priority: event.priority,
     location: event.location,
     recurrence: event.recurrence,
+    recurrenceUntil: event.recurrenceUntil?.toISOString() ?? null,
   };
 }
 

@@ -364,6 +364,46 @@ export function parseRecurrenceText(text: string): string | null {
   return null;
 }
 
+/** Parse a recurrence cutoff such as "until 15th of November" in the user's timezone. */
+export function parseRecurrenceUntil(text: string, now: Date, timeZone: string): Date | null {
+  const endText = normalise(text).match(/\b(?:until|through|till)\b\s+(.+)$/)?.[1];
+  if (!endText) return null;
+
+  const local = utcToZoned(startOfZonedDay(now, timeZone), timeZone);
+  const iso = endText.match(/\b(\d{4})-(\d{2})-(\d{2})\b/);
+  let date: { year: number; month: number; day: number } | null = null;
+
+  if (iso) {
+    date = { year: Number(iso[1]), month: Number(iso[2]), day: Number(iso[3]) };
+  } else {
+    const monthNames = Object.keys(MONTHS).sort((a, b) => b.length - a.length).join("|");
+    const dayMonth = endText.match(new RegExp(`\\b(?:the\\s+)?(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?(${monthNames})\\b(?:\\s+(\\d{4}))?`));
+    const monthDay = endText.match(new RegExp(`\\b(${monthNames})\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b(?:,?\\s+(\\d{4}))?`));
+    const month = dayMonth?.[2] ?? monthDay?.[1];
+    const day = dayMonth?.[1] ?? monthDay?.[2];
+    const explicitYear = dayMonth?.[3] ?? monthDay?.[3];
+    if (month && day) {
+      const monthIndex = MONTHS[month];
+      date = {
+        year: explicitYear ? Number(explicitYear) : monthIndex < local.month ? local.year + 1 : local.year,
+        month: monthIndex,
+        day: Number(day),
+      };
+    }
+  }
+
+  if (!date) return null;
+  const midnight = new Date(Date.UTC(date.year, date.month - 1, date.day));
+  if (
+    midnight.getUTCFullYear() !== date.year ||
+    midnight.getUTCMonth() + 1 !== date.month ||
+    midnight.getUTCDate() !== date.day
+  ) {
+    return null;
+  }
+  return zonedToUtc(date, timeZone);
+}
+
 interface ClockRead {
   minutes: number;
   consumed: string;
@@ -413,20 +453,21 @@ export function parseClock(text: string): ClockRead | null {
  */
 export function parseWhen(text: string, now: Date, timeZone: string): ParsedWhen | null {
   const lower = normalise(text);
+  const dateText = lower.split(/\b(?:until|through|till)\b/, 1)[0];
   const today = startOfZonedDay(now, timeZone);
   const local = utcToZoned(today, timeZone);
 
   let target: { year: number; month: number; day: number } | null = null;
   let explicitDate = false;
 
-  const iso = lower.match(/\b(\d{4})-(\d{2})-(\d{2})\b/);
+  const iso = dateText.match(/\b(\d{4})-(\d{2})-(\d{2})\b/);
   if (iso) {
     target = { year: Number(iso[1]), month: Number(iso[2]), day: Number(iso[3]) };
     explicitDate = true;
   }
 
   if (!target) {
-    const inDays = lower.match(/\bin\s+(\d{1,3})\s+days?\b/);
+    const inDays = dateText.match(/\bin\s+(\d{1,3})\s+days?\b/);
     if (inDays) {
       const shift = new Date(Date.UTC(local.year, local.month - 1, local.day + Number(inDays[1])));
       target = {
@@ -439,10 +480,10 @@ export function parseWhen(text: string, now: Date, timeZone: string): ParsedWhen
   }
 
   if (!target) {
-    const monthDay = lower.match(
+    const monthDay = dateText.match(
       /\b(\d{1,2})(?:st|nd|rd|th)?\s+(jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|sept|september|oct|october|nov|november|dec|december)\b/,
     );
-    const dayMonth = lower.match(
+    const dayMonth = dateText.match(
       /\b(jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|sept|september|oct|october|nov|november|dec|december)\s+(\d{1,2})(?:st|nd|rd|th)?\b/,
     );
     const month = monthDay?.[2] ?? dayMonth?.[1];
@@ -456,7 +497,7 @@ export function parseWhen(text: string, now: Date, timeZone: string): ParsedWhen
   }
 
   if (!target) {
-    const weekdayMatch = lower.match(
+    const weekdayMatch = dateText.match(
       /\b(sunday|sun|monday|mon|tuesday|tue|tues|wednesday|wed|thursday|thu|thur|thurs|friday|fri|saturday|sat)\b/,
     );
     if (weekdayMatch) {
@@ -482,15 +523,15 @@ export function parseWhen(text: string, now: Date, timeZone: string): ParsedWhen
   }
 
   if (!target) {
-    if (/\bday after tomorrow\b/.test(lower)) {
+    if (/\bday after tomorrow\b/.test(dateText)) {
       const shift = new Date(Date.UTC(local.year, local.month - 1, local.day + 2));
       target = { year: shift.getUTCFullYear(), month: shift.getUTCMonth() + 1, day: shift.getUTCDate() };
-    } else if (/\btomorrow\b|\btmrw\b|\btmr\b/.test(lower)) {
+    } else if (/\btomorrow\b|\btmrw\b|\btmr\b/.test(dateText)) {
       const shift = new Date(Date.UTC(local.year, local.month - 1, local.day + 1));
       target = { year: shift.getUTCFullYear(), month: shift.getUTCMonth() + 1, day: shift.getUTCDate() };
-    } else if (/\btoday\b|\btonight\b|\bthis morning\b|\bthis afternoon\b|\bthis evening\b/.test(lower)) {
+    } else if (/\btoday\b|\btonight\b|\bthis morning\b|\bthis afternoon\b|\bthis evening\b/.test(dateText)) {
       target = { year: local.year, month: local.month, day: local.day };
-    } else if (/\bnext week\b/.test(lower)) {
+    } else if (/\bnext week\b/.test(dateText)) {
       const shift = new Date(Date.UTC(local.year, local.month - 1, local.day + 7));
       target = { year: shift.getUTCFullYear(), month: shift.getUTCMonth() + 1, day: shift.getUTCDate() };
     }
