@@ -16,11 +16,8 @@ import { TOOL_MAP, toolSpecs, parseWhen, type AgentContext, type ChangeSummary }
 import { runRules } from "./rules";
 import { applyPendingAction, type PendingAction } from "./actions";
 import { budgetStatus, monthTokens } from "./usage";
-<<<<<<< HEAD
 import { detectDistressText, CARE_FIRST_RESPONSE } from "@/lib/domains/rules";
-=======
 import { CHAT_CONTEXT_MESSAGE_LIMIT } from "./history";
->>>>>>> 90c3ad5becc4650f7adba6372a907977b5fd3bac
 
 export interface AgentHistoryTurn {
   role: "user" | "assistant";

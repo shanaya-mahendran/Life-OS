@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { ArrowRight, Loader2, Lock, Mail, User } from "lucide-react";
-import { signInAction, signUpAction, type AuthState } from "./actions";
+import { ArrowRight, Loader2, Lock, Mail, Sparkles, User } from "lucide-react";
+import { signInAction, signUpAction, demoSignInAction, type AuthState } from "./actions";
 
 interface AuthFormProps {
   mode: "signin" | "signup";
@@ -103,6 +103,22 @@ export function AuthForm({ mode, next, notice }: AuthFormProps) {
               <ArrowRight className="h-4 w-4" />
             </>
           )}
+        </button>
+      </form>
+
+      <div className="relative my-5 text-center">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-white/10" />
+        </div>
+        <span className="relative bg-[#13111c] px-3 text-[0.72rem] text-white/40">or instant preview</span>
+      </div>
+
+      <form action={demoSignInAction}>
+        <button
+          type="submit"
+          className="btn btn-ghost w-full justify-center border border-white/10 bg-white/[0.03] py-2.5 text-xs font-semibold text-white/80 hover:bg-white/[0.08]"
+        >
+          <Sparkles className="h-3.5 w-3.5 text-violet-300" /> Continue in Demo Mode (Instant)
         </button>
       </form>
 
