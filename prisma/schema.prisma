@@ -110,7 +110,9 @@ model Event {
   subtask       Subtask?
 
   @@index([userId, start])
+  @@index([userId, start, end])
   @@index([userId, domainId, start])
+  @@index([userId, status])
   @@map("events")
 }
 
@@ -138,7 +140,10 @@ model Task {
   subtasks Subtask[]
 
   @@index([userId, status])
+  @@index([userId, status, dueDate])
   @@index([userId, domainId])
+  @@index([userId, dueDate])
+  @@index([userId, priorityRank])
   @@index([userId, isPriority, deadline])
   @@map("tasks")
 }
@@ -164,6 +169,7 @@ model Subtask {
 
   @@index([taskId, sortOrder])
   @@index([userId, scheduledStart])
+  @@index([userId, status])
   @@map("subtasks")
 }
 
@@ -242,6 +248,7 @@ model Notification {
 
   @@unique([userId, eventId, type])
   @@index([userId, status])
+  @@index([userId, status, createdAt])
   @@index([userId, createdAt])
   @@map("notifications")
 }
@@ -443,6 +450,7 @@ model ResetPlanEvent {
   commitment ResetCommitment? @relation(fields: [commitmentId], references: [id], onDelete: Cascade)
 
   @@index([planId, batchId])
+  @@index([commitmentId])
   @@map("reset_plan_events")
 }
 
@@ -469,6 +477,7 @@ model Habit {
   entries    HabitEntry[]
 
   @@index([userId, status])
+  @@index([planId])
   @@map("habits")
 }
 
@@ -511,6 +520,7 @@ model GoalTrack {
   progress   GoalProgress[]
 
   @@index([userId, status])
+  @@index([planId])
   @@map("goal_tracks")
 }
 

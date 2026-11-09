@@ -317,7 +317,7 @@ export function CalendarBoard({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center rounded-xl border border-white/[0.07] bg-white/[0.04] p-0.5">
+        <div className="flex items-center rounded-xl border border-white/7 bg-white/4 p-0.5">
           {(["month", "week", "day"] as View[]).map((option) => (
             <button
               key={option}
@@ -325,7 +325,7 @@ export function CalendarBoard({
               className={cn(
                 "rounded-[0.6rem] px-3 py-1.5 text-[0.74rem] font-semibold capitalize transition",
                 view === option
-                  ? "bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-[0_6px_18px_-8px_rgba(124,92,255,0.9)]"
+                  ? "bg-linear-to-br from-violet-500 to-indigo-600 text-white shadow-[0_6px_18px_-8px_rgba(124,92,255,0.9)]"
                   : "text-white/45 hover:text-white/75",
               )}
             >
@@ -372,7 +372,7 @@ export function CalendarBoard({
                       Show all
                     </button>
                   </div>
-                  <div className="scroll-thin max-h-[20rem] space-y-3 overflow-y-auto">
+                  <div className="scroll-thin max-h-80 space-y-3 overflow-y-auto">
                     {DOMAIN_FAMILIES.map((family) => {
                       const familySlugs = family.slugs;
                       const clusterDomains = domains.filter((d) => familySlugs.includes(d.slug));
@@ -469,7 +469,7 @@ export function CalendarBoard({
             />
           )}
 
-          <div className="mt-2 flex items-center justify-end border-t border-white/[0.05] pt-2">
+          <div className="mt-2 flex items-center justify-end border-t border-white/5 pt-2">
             <span className="ml-auto hidden text-[0.6rem] text-white/25 sm:block">
               Drag a block to move it · click empty space to create
             </span>
