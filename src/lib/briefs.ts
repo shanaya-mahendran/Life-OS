@@ -50,7 +50,8 @@ export function greetingFor(date: Date, timeZone: string): string {
   const hour = utcToZoned(date, timeZone).hour;
   if (hour < 12) return "Good morning";
   if (hour < 17) return "Good afternoon";
-  return "Good evening";
+  if (hour < 22) return "Good evening";
+  return "Good night";
 }
 
 /** Build the brief that greets the user on Today. */

@@ -32,8 +32,6 @@ export default async function PrioritiesPage() {
     domainAccent: task.domain.accent,
     subtasks: task.subtasks,
   }));
-  const activeCount = boardTasks.filter((task) => task.status !== "done").length;
-
   return (
     <div className="space-y-4">
       <Link href="/today" className="inline-flex items-center gap-1.5 text-xs text-white/45 hover:text-white/80">
@@ -45,7 +43,7 @@ export default async function PrioritiesPage() {
             <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
             <h1 className="font-display text-xl font-bold text-white">All priorities</h1>
           </div>
-          <p className="mt-1 text-sm text-white/45">{activeCount} active · ordered by deadline and risk</p>
+          <p className="mt-1 text-sm text-white/45">Ordered by deadline and risk</p>
         </div>
       </header>
       <MainTaskBoard

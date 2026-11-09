@@ -16,7 +16,11 @@ import { TOOL_MAP, toolSpecs, parseWhen, type AgentContext, type ChangeSummary }
 import { runRules } from "./rules";
 import { applyPendingAction, type PendingAction } from "./actions";
 import { budgetStatus, monthTokens } from "./usage";
+<<<<<<< HEAD
 import { detectDistressText, CARE_FIRST_RESPONSE } from "@/lib/domains/rules";
+=======
+import { CHAT_CONTEXT_MESSAGE_LIMIT } from "./history";
+>>>>>>> 90c3ad5becc4650f7adba6372a907977b5fd3bac
 
 export interface AgentHistoryTurn {
   role: "user" | "assistant";
@@ -64,6 +68,7 @@ const TOOL_INTENTS: Record<string, string> = {
   move_event: "move",
   cancel_event: "cancel",
   find_free_slots: "free_slots",
+  create_main_task: "task",
   create_task: "task",
   update_task: "complete",
   plan_backwards: "plan",
@@ -284,7 +289,9 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
 
   const messages: RawMessage[] = [
     { role: "system", content: system },
-    ...(input.history ?? []).slice(-8).map((turn) => ({ role: turn.role, content: turn.content }) as RawMessage),
+    ...(input.history ?? [])
+      .slice(-CHAT_CONTEXT_MESSAGE_LIMIT)
+      .map((turn) => ({ role: turn.role, content: turn.content }) as RawMessage),
     { role: "user", content: input.message },
   ];
 

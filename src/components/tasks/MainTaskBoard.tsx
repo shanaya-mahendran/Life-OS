@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronRight, Clock3, Loader2, Plus, Star, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronRight, Clock3, Loader2, Plus, Star, Trash2, X } from "lucide-react";
 import { formatInZone, humanizeMinutes, zonedToUtc } from "@/lib/time";
+import { countActivePriorities } from "@/lib/tasks/priority";
+import { rollup } from "@/lib/tasks/rollup";
 import { cn } from "@/lib/utils";
 
 export interface BoardSubtask {
@@ -47,6 +49,7 @@ interface MainTaskBoardProps {
   timeZone: string;
   priorityView?: boolean;
   compact?: boolean;
+  maxVisible?: number;
   domains?: { slug: string; name: string }[];
 }
 
@@ -80,12 +83,14 @@ function TaskCard({
   task,
   timeZone,
   refresh,
+  onSubtasksChange,
   onRemove,
   rankControl,
 }: {
   task: BoardTask;
   timeZone: string;
   refresh: () => void;
+  onSubtasksChange: (subtasks: BoardSubtask[]) => void;
   onRemove: (id: string, undoAvailable: boolean) => void;
   rankControl?: {
     index: number;
@@ -115,6 +120,11 @@ function TaskCard({
   }[] | null>(null);
   const [proposalRemainder, setProposalRemainder] = useState(0);
   const [scheduleBusy, setScheduleBusy] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    kind: "task" | "subtask";
+    id: string;
+    title: string;
+  } | null>(null);
   const [deadlineInput, setDeadlineInput] = useState(() => {
     const deadline = asDate(task.deadline);
     return deadline ? localInput(deadline, timeZone) : "";
@@ -122,7 +132,23 @@ function TaskCard({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [affected, setAffected] = useState<{ id: string; title: string }[]>([]);
+  const cancelDeleteRef = useRef<HTMLButtonElement>(null);
+  const deleteTriggerRef = useRef<HTMLButtonElement>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    if (!deleteTarget) {
+      deleteTriggerRef.current?.focus();
+      return;
+    }
+
+    cancelDeleteRef.current?.focus();
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setDeleteTarget(null);
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [deleteTarget]);
 
   async function patchTask(body: Record<string, unknown>) {
     const response = await fetch(`/api/tasks/${task.id}`, {
@@ -190,6 +216,11 @@ function TaskCard({
         if (data.code === "DAILY_CAP") setDailyCapOverride(true);
         throw new Error(data.message ?? data.error ?? "Could not save subtask.");
       }
+      const savedSubtask = data.subtask as BoardSubtask;
+      const nextSubtasks = editingSubtaskId
+        ? task.subtasks.map((subtask) => subtask.id === editingSubtaskId ? savedSubtask : subtask)
+        : [...task.subtasks, savedSubtask];
+      onSubtasksChange(nextSubtasks);
       setSubtaskTitle("");
       setScheduledStart("");
       setEditingSubtaskId(null);
@@ -213,6 +244,8 @@ function TaskCard({
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message ?? data.error ?? "Could not update subtask.");
+      const updatedSubtask = data.subtask as BoardSubtask;
+      onSubtasksChange(task.subtasks.map((subtask) => subtask.id === id ? updatedSubtask : subtask));
       refresh();
     } catch (issue) {
       setError(issue instanceof Error ? issue.message : "Could not update subtask.");
@@ -221,16 +254,22 @@ function TaskCard({
     }
   }
 
-  async function deleteTask() {
-    if (!window.confirm(`Delete “${task.title}” and its subtasks?`)) return;
+  async function confirmDelete() {
+    if (!deleteTarget) return;
     setBusy(true);
+    setError("");
     try {
-      const response = await fetch(`/api/tasks/${task.id}`, { method: "DELETE" });
+      const response = await fetch(
+        deleteTarget.kind === "task" ? `/api/tasks/${deleteTarget.id}` : `/api/subtasks/${deleteTarget.id}`,
+        { method: "DELETE" },
+      );
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error ?? "Could not delete task.");
-      onRemove(task.id, data.undoAvailable === true);
+      if (!response.ok) throw new Error(data.error ?? data.message ?? `Could not delete ${deleteTarget.kind}.`);
+      if (deleteTarget.kind === "task") onRemove(task.id, data.undoAvailable === true);
+      else refresh();
+      setDeleteTarget(null);
     } catch (issue) {
-      setError(issue instanceof Error ? issue.message : "Could not delete task.");
+      setError(issue instanceof Error ? issue.message : `Could not delete ${deleteTarget.kind}.`);
     } finally {
       setBusy(false);
     }
@@ -370,7 +409,7 @@ function TaskCard({
         <button onClick={() => void toggleDone()} disabled={busy} className="rounded-lg border border-white/10 p-1.5 text-white/55 hover:text-emerald-300" aria-label={task.status === "done" ? "Reopen main task" : "Complete main task"}>
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className={cn("h-4 w-4", task.status === "done" && "text-emerald-300")} />}
         </button>
-        <button onClick={() => void deleteTask()} disabled={busy} className="rounded-lg p-1.5 text-white/30 hover:text-rose-300" aria-label="Delete task">
+        <button ref={deleteTriggerRef} onClick={() => setDeleteTarget({ kind: "task", id: task.id, title: task.title })} disabled={busy} className="rounded-lg p-1.5 text-white/30 transition-colors hover:bg-rose-400/10 hover:text-rose-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/70" aria-label="Delete task">
           <Trash2 className="h-4 w-4" />
         </button>
       </header>
@@ -454,7 +493,7 @@ function TaskCard({
                     Edit
                   </button>
                   {subtask.start && <button onClick={() => void updateSubtask(subtask.id, { scheduledStart: null })} className="text-[0.65rem] text-white/35 hover:text-amber-200">Unschedule</button>}
-                  <button onClick={() => { if (window.confirm(`Delete subtask “${subtask.title}”?`)) void fetch(`/api/subtasks/${subtask.id}`, { method: "DELETE" }).then(refresh); }} className="text-white/30 hover:text-rose-300" aria-label={`Delete ${subtask.title}`}><Trash2 className="h-3.5 w-3.5" /></button>
+                  <button onClick={(event) => { deleteTriggerRef.current = event.currentTarget; setDeleteTarget({ kind: "subtask", id: subtask.id, title: subtask.title }); }} disabled={busy} className="rounded-md p-1 text-white/30 transition-colors hover:bg-rose-400/10 hover:text-rose-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/70" aria-label={`Delete ${subtask.title}`}><Trash2 className="h-3.5 w-3.5" /></button>
                 </li>
               ))}
             </ul>
@@ -476,11 +515,79 @@ function TaskCard({
           {error && <p className="mt-2 text-xs text-rose-300">{error}</p>}
         </div>
       )}
+      {deleteTarget && (
+        <div
+          className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/75 p-4 backdrop-blur-sm"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !busy) setDeleteTarget(null);
+          }}
+        >
+          <section
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby={`delete-title-${task.id}`}
+            aria-describedby={`delete-description-${task.id}`}
+            className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-[#15171c] shadow-2xl shadow-black/50"
+          >
+            <header className="flex items-start gap-3 border-b border-white/[0.07] px-5 py-4">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-rose-400/10 text-rose-300">
+                <Trash2 className="h-5 w-5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <h2 id={`delete-title-${task.id}`} className="text-sm font-semibold text-white">
+                  Delete {deleteTarget.kind === "task" ? "main task" : "subtask"}?
+                </h2>
+                <p id={`delete-description-${task.id}`} className="mt-1 break-words text-sm leading-6 text-white/55">
+                  “{deleteTarget.title}”
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                disabled={busy}
+                aria-label="Close delete confirmation"
+                className="rounded-lg p-1.5 text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </header>
+            <div className="px-5 py-4">
+              <p className="text-sm leading-6 text-white/65">
+                {deleteTarget.kind === "task"
+                  ? `This also removes ${task.subtasks.length} ${task.subtasks.length === 1 ? "subtask" : "subtasks"} and cancels any linked calendar blocks.`
+                  : "This removes the subtask and cancels its linked calendar block, if it has one."}
+                {deleteTarget.kind === "task" && " You can undo this deletion afterward."}
+              </p>
+              {error && <p role="alert" className="mt-3 rounded-lg border border-rose-300/15 bg-rose-300/[0.06] px-3 py-2 text-sm text-rose-200">{error}</p>}
+            </div>
+            <footer className="flex justify-end gap-2 border-t border-white/[0.07] bg-white/[0.02] px-5 py-3">
+              <button
+                ref={cancelDeleteRef}
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                disabled={busy}
+                className="rounded-lg px-3 py-2 text-sm text-white/65 transition-colors hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:opacity-50"
+              >
+                Keep it
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmDelete()}
+                disabled={busy}
+                className="inline-flex min-w-28 items-center justify-center gap-2 rounded-lg bg-rose-500 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-rose-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-200/80 disabled:cursor-wait disabled:opacity-60"
+              >
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                {busy ? "Deleting…" : "Delete"}
+              </button>
+            </footer>
+          </section>
+        </div>
+      )}
     </article>
   );
 }
 
-export function MainTaskBoard({ tasks: initialTasks, domainSlug, domainName, timeZone, priorityView, compact, domains = [] }: MainTaskBoardProps) {
+export function MainTaskBoard({ tasks: initialTasks, domainSlug, domainName, timeZone, priorityView, compact, maxVisible, domains = [] }: MainTaskBoardProps) {
   const router = useRouter();
   const [tasks, setTasks] = useState(initialTasks);
   const [title, setTitle] = useState("");
@@ -521,6 +628,8 @@ export function MainTaskBoard({ tasks: initialTasks, domainSlug, domainName, tim
       return aDeadline - bDeadline || (a.priorityRank ?? Number.MAX_SAFE_INTEGER) - (b.priorityRank ?? Number.MAX_SAFE_INTEGER);
     });
   }, [tasks, priorityView, tab, domainFilter, sort, selectedDomain]);
+  const activePriorityCount = countActivePriorities(tasks);
+  const displayedTasks = maxVisible ? visible.slice(0, maxVisible) : visible;
 
   async function createTask(event: React.FormEvent) {
     event.preventDefault();
@@ -553,8 +662,29 @@ export function MainTaskBoard({ tasks: initialTasks, domainSlug, domainName, tim
   }
 
   function refresh() {
-    setTasks(initialTasks);
     router.refresh();
+  }
+
+  function updateTaskSubtasks(taskId: string, subtasks: BoardSubtask[]) {
+    setTasks((current) => current.map((task) => {
+      if (task.id !== taskId) return task;
+      const deadline = asDate(task.deadline);
+      return {
+        ...task,
+        subtasks,
+        rollup: rollup({
+          deadline,
+          status: task.status,
+          subtasks: subtasks.map((subtask) => ({
+            id: subtask.id,
+            title: subtask.title,
+            durationMin: subtask.durationMin,
+            scheduledStart: asDate(subtask.scheduledStart),
+            status: subtask.status,
+          })),
+        }),
+      };
+    }));
   }
 
   async function undoDelete() {
@@ -730,11 +860,24 @@ export function MainTaskBoard({ tasks: initialTasks, domainSlug, domainName, tim
       )}
       {error && <p className="rounded-lg bg-rose-400/10 px-3 py-2 text-xs text-rose-200">{error}</p>}
       {undoAvailable && <button onClick={() => void undoDelete()} disabled={undoBusy} className="rounded-lg border border-violet-300/25 bg-violet-400/10 px-3 py-2 text-xs text-violet-200">{undoBusy ? "Undoing…" : "Task deleted · Undo"}</button>}
-      {visible.length ? visible.map((task, index) => (
-        <TaskCard key={task.id} task={task} timeZone={timeZone} refresh={refresh} onRemove={(id, canUndo) => { setTasks((current) => current.filter((item) => item.id !== id)); setUndoAvailable(canUndo); }}
+      {priorityView && (
+        <p className="text-xs text-white/45">
+          <span className="font-semibold tabular-nums text-amber-200">{activePriorityCount}</span>
+          {" "}active {activePriorityCount === 1 ? "priority" : "priorities"}
+          {!compact && <span> · Starred tasks only; other tasks stay in their domain lists.</span>}
+        </p>
+      )}
+      {displayedTasks.length ? displayedTasks.map((task, index) => (
+        <TaskCard key={task.id} task={task} timeZone={timeZone} refresh={refresh}
+          onSubtasksChange={(subtasks) => updateTaskSubtasks(task.id, subtasks)}
+          onRemove={(id, canUndo) => {
+          setTasks((current) => current.filter((item) => item.id !== id));
+          setUndoAvailable(canUndo);
+          router.refresh();
+        }}
           rankControl={priorityView && !compact ? {
             index,
-            count: visible.length,
+            count: displayedTasks.length,
             move: (direction) => { void movePriority(task.id, index + direction); },
             dragStart: (event) => {
               setDraggingTaskId(task.id);
@@ -752,6 +895,9 @@ export function MainTaskBoard({ tasks: initialTasks, domainSlug, domainName, tim
           } : undefined}
         />
       )) : <p className="rounded-2xl border border-dashed border-white/10 px-4 py-8 text-center text-sm text-white/40">{priorityView ? "No priority tasks in this view." : "No main tasks yet."}</p>}
+      {maxVisible !== undefined && visible.length > maxVisible && (
+        <p className="text-center text-xs text-white/40">Showing {maxVisible} of {visible.length} active priorities.</p>
+      )}
     </section>
   );
 }
