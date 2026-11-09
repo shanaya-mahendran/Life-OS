@@ -1,55 +1,82 @@
-export const DOMAIN_FAMILIES = [
+import { DOMAINS, type DomainCluster } from "./catalog";
+
+export interface DomainFamily {
+  name: string;
+  cluster: DomainCluster;
+  color: string;
+  slugs: readonly string[];
+  domainColors: Record<string, string>;
+}
+
+export const DOMAIN_FAMILIES: DomainFamily[] = [
   {
-    name: "Work and growth",
-    color: "#60a5fa",
+    name: "Study and work",
+    cluster: "study_and_work",
+    color: "#3E7BF0",
+    slugs: ["career", "education", "competitions", "learning", "open-source", "blogging", "portfolio"],
     domainColors: {
-      career: "#3b82f6",
-      education: "#60a5fa",
-      learning: "#93c5fd",
-      "open-source": "#0ea5e9",
-      competitions: "#2563eb",
-      portfolio: "#1d4ed8",
+      career: "#3E7BF0",
+      education: "#4DB3F7",
+      competitions: "#8F9BFF",
+      learning: "#22C7E8",
+      "open-source": "#8FDA3E",
+      blogging: "#E056D6",
+      portfolio: "#B8528E",
     },
-    slugs: ["career", "education", "learning", "open-source", "competitions", "portfolio"],
   },
   {
     name: "Body and health",
-    color: "#34d399",
-    domainColors: { food: "#34d399", sleep: "#10b981", karate: "#059669", rest: "#6ee7b7" },
-    slugs: ["food", "sleep", "karate", "rest"],
+    cluster: "body_and_health",
+    color: "#5B5FD6",
+    slugs: ["sleep", "food", "karate", "medicine", "rest", "period"],
+    domainColors: {
+      sleep: "#5B5FD6",
+      food: "#FF9F43",
+      karate: "#E5484D",
+      medicine: "#2DD4BF",
+      rest: "#86D8B0",
+      period: "#D6336C",
+    },
   },
   {
-    name: "Money and admin",
-    color: "#fbbf24",
-    domainColors: { finance: "#fbbf24", admin: "#f59e0b" },
-    slugs: ["finance", "admin"],
+    name: "Mind and spirit",
+    cluster: "mind_and_spirit",
+    color: "#D17FF5",
+    slugs: ["prayer", "mood", "habits", "planning"],
+    domainColors: {
+      prayer: "#D17FF5",
+      mood: "#F472B6",
+      habits: "#FB6F92",
+      planning: "#D9DCEF",
+    },
   },
   {
-    name: "People and purpose",
-    color: "#f472b6",
-    domainColors: { volunteering: "#f472b6", social: "#ec4899", blogging: "#db2777" },
-    slugs: ["volunteering", "social", "blogging"],
+    name: "People and service",
+    cluster: "people_and_service",
+    color: "#3FC76A",
+    slugs: ["volunteering", "social"],
+    domainColors: {
+      volunteering: "#3FC76A",
+      social: "#FF7F6B",
+    },
   },
   {
-    name: "Planning and reflection",
-    color: "#a78bfa",
-    domainColors: { planning: "#a78bfa", habits: "#8b5cf6" },
-    slugs: ["planning", "habits"],
+    name: "Life admin",
+    cluster: "life_admin",
+    color: "#E8B93F",
+    slugs: ["finance", "admin", "travel"],
+    domainColors: {
+      finance: "#E8B93F",
+      admin: "#B5BC4A",
+      travel: "#8AA0BA",
+    },
   },
-  {
-    name: "Travel and commute",
-    color: "#94a3b8",
-    domainColors: { travel: "#94a3b8" },
-    slugs: ["travel"],
-  },
-] as const;
+];
 
-const DOMAIN_COLORS = new Map(
-  DOMAIN_FAMILIES.flatMap((family) =>
-    Object.entries(family.domainColors).map(([slug, color]) => [slug, color] as const),
-  ),
+const DOMAIN_COLORS = new Map<string, string>(
+  DOMAINS.map((domain) => [domain.slug, domain.accent]),
 );
 
-export function domainFamilyColor(slug: string, fallback = "#94a3b8"): string {
+export function domainFamilyColor(slug: string, fallback = "#7c5cff"): string {
   return DOMAIN_COLORS.get(slug) ?? fallback;
 }

@@ -136,6 +136,10 @@ const DOMAIN_KEYWORDS: Record<DomainSlug, string[]> = {
   portfolio: ["portfolio", "project write-up", "case study", "certificate", "achievement", "resume project"],
   travel: ["travel", "commute", "flight", "train", "bus", "cab", "airport", "drive", "journey"],
   habits: ["habits", "habit", "check-in", "checkin", "reflection", "journal", "mood", "streak", "gym", "workout", "meditate"],
+  medicine: ["medicine", "medication", "dose", "pill", "prescription", "refill", "doctor", "clinic", "symptom"],
+  period: ["period", "cycle", "menstrual", "flow", "cramps", "spotting"],
+  prayer: ["prayer", "prayers", "fajr", "dhuhr", "asr", "maghrib", "isha", "salah", "salat", "namaz", "mosque", "worship", "sunrise"],
+  mood: ["mood", "energy", "feeling", "feelings", "emotions", "burnout", "weather map", "gentle mode"],
 };
 
 export function normalise(text: string): string {
@@ -331,6 +335,7 @@ export function inferEventDuration(text: string, domainSlug?: string | null): nu
     if (slug === "health" || slug === "karate") return 60;
     if (slug === "food") return 45;
     if (slug === "admin" || slug === "finance" || slug === "habits" || slug === "rest") return 30;
+    if (slug === "medicine" || slug === "prayer" || slug === "period" || slug === "mood") return 15;
     if (slug === "deep-work") return 90;
     if (slug === "competitions" || slug === "education" || slug === "career") return 60;
   }

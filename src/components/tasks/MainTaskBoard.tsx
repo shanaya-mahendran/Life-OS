@@ -594,8 +594,82 @@ export function MainTaskBoard({ tasks: initialTasks, domainSlug, domainName, tim
     }
   }
 
+  const overdueTasks = useMemo(() => {
+    return tasks.filter((t) => t.rollup.isOverdue && t.status !== "done");
+  }, [tasks]);
+
+  function setDateShortcut(daysOffset: number, defaultHour = 18) {
+    const d = new Date();
+    d.setDate(d.getDate() + daysOffset);
+    d.setHours(defaultHour, 0, 0, 0);
+    setDeadline(localInput(d, timeZone));
+  }
+
+  async function triageOverdue(action: "tomorrow" | "next_week" | "drop") {
+    if (!overdueTasks.length) return;
+    setError("");
+    try {
+      if (action === "drop") {
+        for (const t of overdueTasks) {
+          await fetch(`/api/tasks/${t.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "slipped" }),
+          });
+        }
+      } else {
+        const offset = action === "tomorrow" ? 1 : 7;
+        for (const t of overdueTasks) {
+          const newDate = new Date();
+          newDate.setDate(newDate.getDate() + offset);
+          newDate.setHours(18, 0, 0, 0);
+          await fetch(`/api/tasks/${t.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ deadline: newDate.toISOString() }),
+          });
+        }
+      }
+      refresh();
+    } catch {
+      setError("Failed to triage overdue tasks.");
+    }
+  }
+
   return (
     <section className="space-y-3">
+      {/* Overdue Triage Banner (Fix #10) */}
+      {overdueTasks.length > 0 && !compact && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/30 bg-amber-500/10 p-3.5 text-xs text-amber-200">
+          <div>
+            <span className="font-semibold">{overdueTasks.length} overdue task(s)</span>
+            <p className="text-[0.72rem] text-amber-300/70">Clear the backlog with one tap so late tasks don't turn into guilt.</p>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={() => void triageOverdue("tomorrow")}
+              className="rounded-lg bg-amber-400/20 px-2.5 py-1 text-xs font-medium hover:bg-amber-400/30"
+            >
+              Move to tomorrow
+            </button>
+            <button
+              type="button"
+              onClick={() => void triageOverdue("next_week")}
+              className="rounded-lg bg-white/10 px-2.5 py-1 text-xs font-medium text-white/80 hover:bg-white/15"
+            >
+              Move to next week
+            </button>
+            <button
+              type="button"
+              onClick={() => void triageOverdue("drop")}
+              className="rounded-lg bg-rose-500/15 px-2.5 py-1 text-xs font-medium text-rose-300 hover:bg-rose-500/25"
+            >
+              Drop late tasks
+            </button>
+          </div>
+        </div>
+      )}
       {priorityView && !compact && (
         <nav className="flex gap-2" aria-label="Priority task filters">
           {(["active", "risk", "done"] as const).map((value) => (
@@ -620,12 +694,21 @@ export function MainTaskBoard({ tasks: initialTasks, domainSlug, domainName, tim
         </div>
       )}
       {!priorityView && (
-        <form onSubmit={createTask} className="grid gap-2 rounded-2xl border border-white/10 bg-white/[0.025] p-3 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,auto)_auto_auto]">
-          <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={`New ${domainName ?? "main"} task`} className="field" required />
-          <input aria-label="Main task deadline" type="datetime-local" value={deadline} onChange={(event) => setDeadline(event.target.value)} className="field" />
-          <button type="button" onClick={() => setPriority((value) => !value)} className={cn("btn btn-ghost", priority && "text-amber-200")}><Star className={cn("h-4 w-4", priority && "fill-amber-300")} /> Priority</button>
-          <button disabled={creating || !title.trim()} className="btn btn-primary">{creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Add task</button>
-        </form>
+        <div className="space-y-1.5">
+          <form onSubmit={createTask} className="grid gap-2 rounded-2xl border border-white/10 bg-white/[0.025] p-3 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,auto)_auto_auto]">
+            <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={`New ${domainName ?? "main"} task`} className="field" required />
+            <input aria-label="Main task deadline" type="datetime-local" value={deadline} onChange={(event) => setDeadline(event.target.value)} className="field" />
+            <button type="button" onClick={() => setPriority((value) => !value)} className={cn("btn btn-ghost", priority && "text-amber-200")}><Star className={cn("h-4 w-4", priority && "fill-amber-300")} /> Priority</button>
+            <button disabled={creating || !title.trim()} className="btn btn-primary">{creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Add task</button>
+          </form>
+          <div className="flex items-center gap-1.5 px-1 text-[0.72rem] text-white/40">
+            <span>Quick due date:</span>
+            <button type="button" onClick={() => setDateShortcut(0)} className="rounded-md bg-white/[0.05] px-2 py-0.5 hover:bg-white/10 hover:text-white">Today</button>
+            <button type="button" onClick={() => setDateShortcut(1)} className="rounded-md bg-white/[0.05] px-2 py-0.5 hover:bg-white/10 hover:text-white">Tomorrow</button>
+            <button type="button" onClick={() => setDateShortcut(3)} className="rounded-md bg-white/[0.05] px-2 py-0.5 hover:bg-white/10 hover:text-white">In 3 days</button>
+            <button type="button" onClick={() => setDateShortcut(7)} className="rounded-md bg-white/[0.05] px-2 py-0.5 hover:bg-white/10 hover:text-white">Next week</button>
+          </div>
+        </div>
       )}
       {priorityView && !compact && (
         <form onSubmit={createTask} className="grid gap-2 rounded-2xl border border-amber-400/20 bg-amber-400/[0.04] p-3 sm:grid-cols-[minmax(0,1fr)_minmax(10rem,auto)_minmax(12rem,auto)_auto]">

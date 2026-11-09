@@ -24,6 +24,30 @@
   --info: #60a5fa;
   --shadow-card: none;
   --shadow-float: 0 8px 24px rgba(0, 0, 0, 0.5);
+
+  /* 22 LifeOS Domain Palette */
+  --d-career: #3E7BF0;
+  --d-education: #4DB3F7;
+  --d-competitions: #8F9BFF;
+  --d-learning: #22C7E8;
+  --d-opensource: #8FDA3E;
+  --d-blogging: #E056D6;
+  --d-portfolio: #B8528E;
+  --d-sleep: #5B5FD6;
+  --d-food: #FF9F43;
+  --d-karate: #E5484D;
+  --d-medicine: #2DD4BF;
+  --d-rest: #86D8B0;
+  --d-prayer: #D17FF5;
+  --d-mood: #F472B6;
+  --d-habits: #FB6F92;
+  --d-forward: #D9DCEF;
+  --d-volunteering: #3FC76A;
+  --d-social: #FF7F6B;
+  --d-finance: #E8B93F;
+  --d-admin: #B5BC4A;
+  --d-travel: #8AA0BA;
+  --d-period: #D6336C;
 }
 
 [data-theme="light"] {

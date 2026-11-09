@@ -11,6 +11,7 @@ import { addZonedDays, formatInZone, humanizeMinutes, minutesBetween, startOfWee
 import { withAlpha } from "@/lib/utils";
 import { DomainIcon } from "@/components/domain/DomainIcon";
 import { DomainWorkspace } from "@/components/domain/DomainWorkspace";
+import { SignatureWidget } from "@/components/domain/SignatureWidget";
 import { ProgressRing } from "@/components/today/ProgressRing";
 import type { BoardTask } from "@/components/tasks/MainTaskBoard";
 
@@ -135,6 +136,9 @@ export default async function DomainPage({ params }: { params: Promise<{ slug: s
           </div>
         </div>
       </section>
+
+      {/* Domain Signature System Widget */}
+      <SignatureWidget slug={domain.slug} accent={accent} timeZone={tz} />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <DomainWorkspace

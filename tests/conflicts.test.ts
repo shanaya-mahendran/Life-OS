@@ -106,4 +106,25 @@ describe("findConflicts", () => {
 
     expect(conflicts[0].code).toBe("invalid_range");
   });
+
+  it("defends Tier 1 anchors (medicine/prayer/sleep) against lower tier overlaps", () => {
+    const doseAnchor = makeEvent("m1", "Morning Dose", "2026-11-03T08:00:00Z", "2026-11-03T08:15:00Z", "medicine");
+    const conflicts = findConflicts({
+      candidate: { title: "Study session", domainSlug: "education", start: at("2026-11-03T07:45:00Z"), end: at("2026-11-03T08:30:00Z") },
+      existing: [doseAnchor],
+    });
+
+    expect(conflicts.some((c) => c.code === "tier_1_protected")).toBe(true);
+    expect(needsConfirmation(conflicts)).toBe(true);
+  });
+
+  it("proposes moving lower-tier blocks when a Tier 1 anchor is scheduled", () => {
+    const errand = makeEvent("a1", "Errand", "2026-11-03T12:00:00Z", "2026-11-03T13:00:00Z", "admin");
+    const conflicts = findConflicts({
+      candidate: { title: "Dhuhr Prayer", domainSlug: "prayer", start: at("2026-11-03T12:15:00Z"), end: at("2026-11-03T12:35:00Z") },
+      existing: [errand],
+    });
+
+    expect(conflicts.some((c) => c.code === "propose_move_lower_tier")).toBe(true);
+  });
 });

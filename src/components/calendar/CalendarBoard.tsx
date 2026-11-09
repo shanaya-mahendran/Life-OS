@@ -6,7 +6,8 @@ import { ChevronLeft, ChevronRight, Layers, Loader2, Plus, TriangleAlert } from 
 import type { UiConflict, UiEvent } from "@/lib/dto";
 import { addZonedDays, utcToZoned, zonedToUtc } from "@/lib/time";
 import { cn, withAlpha } from "@/lib/utils";
-import { domainFamilyColor } from "@/lib/domains/presentation";
+import { DOMAIN_FAMILIES, domainFamilyColor } from "@/lib/domains/presentation";
+import { DOMAIN_MAP } from "@/lib/domains/catalog";
 import { Modal } from "@/components/ui/Modal";
 import { ToastStack, type ToastMessage } from "@/components/ui/Toast";
 import { WeekGrid } from "./WeekGrid";
@@ -371,32 +372,61 @@ export function CalendarBoard({
                       Show all
                     </button>
                   </div>
-                  <div className="scroll-thin max-h-[16rem] space-y-0.5 overflow-y-auto">
-                    {domains.map((domain) => {
-                      const visible = !hiddenDomains.has(domain.slug);
-                      const accent = domainFamilyColor(domain.slug, domain.accent);
+                  <div className="scroll-thin max-h-[20rem] space-y-3 overflow-y-auto">
+                    {DOMAIN_FAMILIES.map((family) => {
+                      const familySlugs = family.slugs;
+                      const clusterDomains = domains.filter((d) => familySlugs.includes(d.slug));
+                      if (!clusterDomains.length) return null;
+
                       return (
-                        <button
-                          key={domain.slug}
-                          onClick={() =>
-                            setHiddenDomains((current) => {
-                              const next = new Set(current);
-                              if (next.has(domain.slug)) next.delete(domain.slug);
-                              else next.add(domain.slug);
-                              return next;
-                            })
-                          }
-                          className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-[0.75rem] text-white/65 transition hover:bg-white/5"
-                        >
-                          <span
-                            className="h-2 w-2 rounded-full transition"
-                            style={{
-                              backgroundColor: visible ? accent : "transparent",
-                              border: `1px solid ${accent}`,
-                            }}
-                          />
-                          <span className={visible ? "" : "text-white/30"}>{domain.name}</span>
-                        </button>
+                        <div key={family.cluster} className="space-y-1">
+                          <div className="flex items-center justify-between px-1 text-[0.65rem] font-semibold uppercase tracking-wider text-white/40">
+                            <span>{family.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                // Show ONLY this cluster
+                                const hidden = new Set<string>();
+                                for (const d of domains) {
+                                  if (!familySlugs.includes(d.slug)) hidden.add(d.slug);
+                                }
+                                setHiddenDomains(hidden);
+                              }}
+                              className="text-[0.6rem] text-violet-300 hover:text-violet-200 capitalize"
+                            >
+                              Only
+                            </button>
+                          </div>
+                          <div className="space-y-0.5">
+                            {clusterDomains.map((domain) => {
+                              const visible = !hiddenDomains.has(domain.slug);
+                              const accent = DOMAIN_MAP[domain.slug]?.accent ?? domainFamilyColor(domain.slug, domain.accent);
+                              return (
+                                <button
+                                  key={domain.slug}
+                                  onClick={() =>
+                                    setHiddenDomains((current) => {
+                                      const next = new Set(current);
+                                      if (next.has(domain.slug)) next.delete(domain.slug);
+                                      else next.add(domain.slug);
+                                      return next;
+                                    })
+                                  }
+                                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-[0.72rem] text-white/70 transition hover:bg-white/5"
+                                >
+                                  <span
+                                    className="h-2 w-2 rounded-full transition"
+                                    style={{
+                                      backgroundColor: visible ? accent : "transparent",
+                                      border: `1px solid ${accent}`,
+                                    }}
+                                  />
+                                  <span className={visible ? "" : "text-white/30"}>{domain.name}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
                       );
                     })}
                   </div>

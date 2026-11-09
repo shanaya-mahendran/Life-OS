@@ -16,6 +16,7 @@ import { TOOL_MAP, toolSpecs, parseWhen, type AgentContext, type ChangeSummary }
 import { runRules } from "./rules";
 import { applyPendingAction, type PendingAction } from "./actions";
 import { budgetStatus, monthTokens } from "./usage";
+import { detectDistressText, CARE_FIRST_RESPONSE } from "@/lib/domains/rules";
 
 export interface AgentHistoryTurn {
   role: "user" | "assistant";
@@ -206,6 +207,33 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunResult> {
   const now = input.now ?? new Date();
   const ctx: AgentContext = { userId: input.userId, user: input.user, now };
   const budget = input.tokenBudget ?? 2_000_000;
+
+  // Care-first safety guard: pause prompts & never send distress or self-harm text to an AI model
+  if (detectDistressText(input.message)) {
+    const outcome = await guardedRules(ctx, input.message);
+    const logId = await persist(input, {
+      ...outcome,
+      engine: "rules",
+      tokensIn: 0,
+      tokensOut: 0,
+    });
+    return {
+      reply: outcome.reply,
+      engine: "rules",
+      state: "info",
+      changes: [],
+      pending: null,
+      toolCalls: [],
+      tokensIn: 0,
+      tokensOut: 0,
+      monthTokens: 0,
+      tokenBudget: budget,
+      logId,
+      intent: "safety_distress",
+      domainSlug: "mood",
+      degraded: false,
+    };
+  }
 
   const before = await monthTokens(input.userId, input.user.timezone, now).catch(() => 0);
   const spend = await budgetStatus(input.userId, input.user.timezone, budget, now).catch(() => ({

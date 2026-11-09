@@ -5,13 +5,17 @@ import {
   ClipboardList,
   Code2,
   Compass,
+  Droplet,
   FolderKanban,
   GraduationCap,
   HeartHandshake,
   Moon,
   PenLine,
+  Pill,
   Plane,
+  Smile,
   Sparkles,
+  Sunrise,
   Swords,
   Trophy,
   Users,
@@ -40,6 +44,10 @@ const ICONS: Record<DomainIconName, LucideIcon> = {
   folder: FolderKanban,
   plane: Plane,
   sparkles: Sparkles,
+  sunrise: Sunrise,
+  pill: Pill,
+  smile: Smile,
+  droplet: Droplet,
 };
 
 export function DomainIcon({

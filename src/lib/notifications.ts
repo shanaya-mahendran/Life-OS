@@ -147,6 +147,7 @@ export async function generateEventNotifications(now: Date = new Date()): Promis
     const itemStartMs = item.start.getTime();
     const itemEndMs = item.end.getTime();
     const dateKey = dayKey(item.start, item.userTimezone);
+    const isSensitive = item.domainSlug === "medicine" || item.domainSlug === "prayer" || item.domainSlug === "mood" || item.domainSlug === "period";
 
     // 1. Check 30m before
     if (itemStartMs >= startWindow30MinFrom.getTime() && itemStartMs <= startWindow30MinTo.getTime()) {
@@ -161,13 +162,18 @@ export async function generateEventNotifications(now: Date = new Date()): Promis
         });
 
         if (!existing) {
+          const title = isSensitive ? "Upcoming reminder" : `Upcoming in 30m: ${item.title}`;
+          const message = isSensitive
+            ? `Your ${clock(item.start, item.userTimezone)} reminder is ready.`
+            : `Starts at ${clock(item.start, item.userTimezone)} in ${item.domainName}.`;
+
           await dbNotification.create({
             data: {
               userId: item.userId,
               eventId: item.id,
               type: typeKey,
-              title: `Upcoming in 30m: ${item.title}`,
-              message: `Starts at ${clock(item.start, item.userTimezone)} in ${item.domainName}.`,
+              title,
+              message,
               link: `/calendar`,
               metadata: {
                 domainSlug: item.domainSlug,
@@ -196,13 +202,18 @@ export async function generateEventNotifications(now: Date = new Date()): Promis
         });
 
         if (!existing) {
+          const title = isSensitive ? "Reminder starting soon" : `Starting in 15m: ${item.title}`;
+          const message = isSensitive
+            ? `Your ${clock(item.start, item.userTimezone)} reminder starts in 15 minutes.`
+            : `Starting soon at ${clock(item.start, item.userTimezone)}. Time to focus!`;
+
           await dbNotification.create({
             data: {
               userId: item.userId,
               eventId: item.id,
               type: typeKey,
-              title: `Starting in 15m: ${item.title}`,
-              message: `Starting soon at ${clock(item.start, item.userTimezone)}. Time to focus!`,
+              title,
+              message,
               link: `/calendar`,
               metadata: {
                 domainSlug: item.domainSlug,
@@ -231,18 +242,23 @@ export async function generateEventNotifications(now: Date = new Date()): Promis
         });
 
         if (!existing) {
+          const title = isSensitive ? "Check-in: Completed?" : `Confirm: Did you achieve “${item.title}”?`;
+          const message = isSensitive
+            ? `Scheduled block ended at ${clock(item.end, item.userTimezone)}. Confirm to track adherence.`
+            : `Finished at ${clock(item.end, item.userTimezone)}. Confirm to track your adherence.`;
+
           await dbNotification.create({
             data: {
               userId: item.userId,
               eventId: item.id,
               type: typeKey,
-              title: `Confirm: Did you achieve “${item.title}”?`,
-              message: `Finished at ${clock(item.end, item.userTimezone)}. Confirm to track your adherence.`,
+              title,
+              message,
               link: `/today`,
               metadata: {
                 domainSlug: item.domainSlug,
                 domainAccent: item.domainAccent,
-                eventTitle: item.title,
+                eventTitle: isSensitive ? "Reminder" : item.title,
                 end: item.end.toISOString(),
               },
             },

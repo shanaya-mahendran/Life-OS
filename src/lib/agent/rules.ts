@@ -34,6 +34,7 @@ import {
   parseWhen,
   titleCase,
 } from "./nlu";
+import { detectDistressText, CARE_FIRST_RESPONSE } from "@/lib/domains/rules";
 
 export interface RuleOutcome {
   reply: string;
@@ -589,6 +590,19 @@ function handleChitChat(ctx: AgentContext, message: string): RuleOutcome {
 /* -------------------------------------------------------------------------- */
 
 export async function runRules(ctx: AgentContext, message: string): Promise<RuleOutcome> {
+  if (detectDistressText(message)) {
+    return {
+      reply: CARE_FIRST_RESPONSE,
+      intent: "safety_distress",
+      domainSlug: "mood",
+      changes: [],
+      inverse: [],
+      pending: null,
+      toolCalls: [],
+      state: "info",
+    };
+  }
+
   const intent = detectIntent(message);
 
   switch (intent) {

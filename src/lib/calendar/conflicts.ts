@@ -7,6 +7,7 @@
 
 import { minutesBetween } from "@/lib/time";
 import type { TimeBlock } from "@/lib/calendar/types";
+import { domainTier, type ProtectedTier } from "@/lib/domains/catalog";
 
 export type ConflictSeverity = "blocking" | "protected" | "buffer" | "overload";
 
@@ -15,6 +16,7 @@ export interface ConflictSubject extends TimeBlock {
   title: string;
   domainSlug: string;
   isProtected?: boolean;
+  tier?: ProtectedTier;
 }
 
 export interface Conflict {
@@ -75,21 +77,53 @@ export function findConflicts(input: ConflictCheckInput): Conflict[] {
     return true;
   });
 
-  // 1. Hard double-booking.
+  // 1. Hard double-booking & Tier checks.
   for (const event of others) {
     if (overlaps(candidate, event)) {
-      conflicts.push({
-        severity: "blocking",
-        code: "overlap",
-        message: `Overlaps "${event.title}" (${overlapMinutes(candidate, event)} min).`,
-        conflictsWith: {
-          id: event.id,
-          title: event.title,
-          domainSlug: event.domainSlug,
-          start: event.start,
-          end: event.end,
-        },
-      });
+      const candTier = candidate.tier ?? domainTier(candidate.domainSlug);
+      const eventTier = event.tier ?? domainTier(event.domainSlug);
+      const mins = overlapMinutes(candidate, event);
+
+      if (eventTier === 1 && candTier !== 1) {
+        conflicts.push({
+          severity: "protected",
+          code: "tier_1_protected",
+          message: `Overlaps protected Tier 1 anchor "${event.title}" (${mins} min). Fixed anchors cannot be overlapped without explicit confirmation.`,
+          conflictsWith: {
+            id: event.id,
+            title: event.title,
+            domainSlug: event.domainSlug,
+            start: event.start,
+            end: event.end,
+          },
+        });
+      } else if (candTier === 1 && eventTier > 1) {
+        conflicts.push({
+          severity: "protected",
+          code: "propose_move_lower_tier",
+          message: `Overlaps lower-tier block "${event.title}" (Tier ${eventTier}). Propose moving "${event.title}" to protect Tier 1 anchor.`,
+          conflictsWith: {
+            id: event.id,
+            title: event.title,
+            domainSlug: event.domainSlug,
+            start: event.start,
+            end: event.end,
+          },
+        });
+      } else {
+        conflicts.push({
+          severity: "blocking",
+          code: "overlap",
+          message: `Overlaps "${event.title}" (${mins} min).`,
+          conflictsWith: {
+            id: event.id,
+            title: event.title,
+            domainSlug: event.domainSlug,
+            start: event.start,
+            end: event.end,
+          },
+        });
+      }
     }
   }
 
