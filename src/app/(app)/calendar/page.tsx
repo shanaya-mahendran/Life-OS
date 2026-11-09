@@ -6,6 +6,7 @@ import { toUiEvent } from "@/lib/dto";
 import { addZonedDays, startOfWeekMonday } from "@/lib/time";
 import { PageBanner } from "@/components/shell/PageBanner";
 import { CalendarBoard } from "@/components/calendar/CalendarBoard";
+import { EcosystemHub } from "@/components/ecosystem/EcosystemHub";
 
 export const metadata = { title: "Calendar · LifeOS" };
 
@@ -33,6 +34,8 @@ export default async function CalendarPage() {
         title="Calendar"
         subtitle={`Your schedule · ${user.timezone.replace("_", " ")}`}
       />
+
+      <EcosystemHub />
 
       <CalendarBoard
         initialEvents={events.map(toUiEvent)}

@@ -17,6 +17,7 @@ import { withAlpha } from "@/lib/utils";
 import { domainFamilyColor } from "@/lib/domains/presentation";
 import { MainTaskBoard, type BoardTask } from "@/components/tasks/MainTaskBoard";
 import { TodaySchedule } from "@/components/today/TodaySchedule";
+import { EcosystemHub } from "@/components/ecosystem/EcosystemHub";
 import { toUiEvent } from "@/lib/dto";
 import { listMainTasks } from "@/lib/tasks/service";
 
@@ -131,6 +132,9 @@ export default async function TodayPage() {
 
         </div>
       </section>
+
+      {/* Cross-Domain Ecosystem Mode & Energy Budget Hub */}
+      <EcosystemHub />
 
       {/* Warnings & Suggestions */}
       {actionableWarnings.length > 0 && (
