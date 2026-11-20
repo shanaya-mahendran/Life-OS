@@ -11,6 +11,7 @@ import { DOMAIN_MAP } from "@/lib/domains/catalog";
 import {
   cancelEvent,
   createEvent,
+  createTask,
   findSlots,
   listEvents,
   undoLastAction,
@@ -20,7 +21,6 @@ import {
 } from "@/lib/calendar/service";
 import { addZonedDays, dayKey, formatInZone, startOfZonedDay, utcToZoned, zonedToUtc } from "@/lib/time";
 import type { AgentContext, ChangeSummary } from "./tools";
-import { createMainTask } from "@/lib/tasks/service";
 import { findEventByText, findTaskByText } from "./lookup";
 import { describePending, type PendingAction } from "./actions";
 import {
@@ -383,11 +383,11 @@ async function handleTask(ctx: AgentContext, message: string): Promise<RuleOutco
   const due = parseWhen(message, ctx.now, ctx.user.timezone);
   const isTopPriority = /\b(top priority|high priority|urgent|priority|starred)\b/i.test(message);
 
-  const result = await createMainTask(ctx.user, {
+  const result = await createTask(ctx.user, {
     domainSlug,
     title,
-    deadline: due?.explicitDate ? due.date : null,
-    isPriority: isTopPriority,
+    dueDate: due?.explicitDate ? due.date : null,
+    priority: isTopPriority ? 3 : 1,
   });
 
   if (!result.ok) return emptyOutcome("task", result.message ?? "I could not add that task.", domainSlug);
@@ -407,13 +407,13 @@ async function handleTask(ctx: AgentContext, message: string): Promise<RuleOutco
         domainSlug,
         domainName: domain?.name ?? domainSlug,
         domainAccent: domain?.accent ?? "#7c5cff",
-        start: result.task.deadline?.toISOString() ?? result.task.dueDate?.toISOString(),
+        start: result.task.dueDate?.toISOString(),
       },
     ],
-    inverse: [{ type: "delete_task", taskId: result.task.id }],
+    inverse: result.inverse ? [result.inverse] : [],
     pending: null,
     state: "applied",
-    toolCalls: [{ name: "create_main_task", args: { domain: domainSlug, title } }],
+    toolCalls: [{ name: "create_task", args: { domain: domainSlug, title } }],
   };
 }
 

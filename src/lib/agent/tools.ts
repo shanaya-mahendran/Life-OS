@@ -538,7 +538,6 @@ export const TOOLS: AgentTool[] = [
       return {
         data: {
           saved: true,
-          domain: domainSlug,
           task: {
             id: result.task.id,
             title: result.task.title,
@@ -548,16 +547,6 @@ export const TOOLS: AgentTool[] = [
               : null,
             priority: result.task.isPriority,
           },
-        },
-        inverse: [{ type: "delete_task", taskId: result.task.id }],
-        change: {
-          kind: "task",
-          action: "created",
-          title: result.task.title,
-          domainSlug,
-          domainName: result.task.domain.name,
-          domainAccent: result.task.domain.accent,
-          start: result.task.deadline?.toISOString(),
         },
       };
     },
